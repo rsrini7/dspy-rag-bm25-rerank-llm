@@ -28,7 +28,7 @@ except LookupError:
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 EMBEDDER_MODEL = os.getenv("EMBEDDER_MODEL", "all-mpnet-base-v2")
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L6-v2")
-LLM_MODEL = os.getenv("LLM_MODEL", "openrouter/google/gemini-2.5-pro-exp-03-25:free")
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-3.5-turbo")
 K_EMBEDDING_RETRIEVAL = int(os.getenv("K_EMBEDDING_RETRIEVAL", 10))
 K_BM25_RETRIEVAL = int(os.getenv("K_BM25_RETRIEVAL", 10))
 K_RERANK = int(os.getenv("K_RERANK", 3))

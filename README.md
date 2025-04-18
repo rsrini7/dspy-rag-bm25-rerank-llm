@@ -57,7 +57,7 @@ Create a `.env` file (see `.env.example`) with the following variables:
 OPENROUTER_API_KEY=your_openrouter_api_key
 EMBEDDER_MODEL=all-mpnet-base-v2
 RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L6-v2
-LLM_MODEL=openrouter/google/gemini-2.5-pro-exp-03-25:free
+LLM_MODEL=openai/gpt-3.5-turbo
 K_EMBEDDING_RETRIEVAL=10
 K_BM25_RETRIEVAL=10
 K_RERANK=3
