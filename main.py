@@ -38,6 +38,11 @@ parser.add_argument(
     type=str,
     help="Query string to run against the indexed documents."
 )
+parser.add_argument(
+    "--llm",
+    action="store_true",
+    help="Enable LLM generation. If not set, only reranked context will be returned."
+)
 args = parser.parse_args()
 
 # --- Main Execution Block ---
@@ -53,6 +58,7 @@ if __name__ == "__main__":
         print("                           Requires --query to be specified as well.")
         print("  -q, --query QUERY_TEXT : Query string to run against the indexed documents.")
         print("                           Can be used alone (with default documents) or with --file.")
+        print("  --llm                  : Enable LLM generation. If not set, only reranked context will be returned.")
         print("\nExamples:")
         print("  # Use default documents and run a specific query:")
         print("  uv run python main.py --query 'What is DSPy?'")
@@ -134,17 +140,27 @@ if __name__ == "__main__":
         llm=llm
     )
 
-    # Check if pipeline creation was successful
-    if not rag_pipeline:
-         logging.error("RAG pipeline creation failed (likely due to missing LLM). Exiting.")
-         exit(1) # Exit if pipeline failed
-
     # --- Execute Query ---
     # At this point, args.query is guaranteed to be non-empty because of the checks above.
     logging.info(f"--- Running Provided Query ---")
     logging.info(f"Question: {args.query}")
-    response = rag_pipeline(question=args.query)
-    logging.info(f"\nAnswer: {response.answer}")
-
-    # The 'else' block for default queries is removed as it's no longer reachable
-    # due to the mandatory --query check when --file is present.
+    response = rag_pipeline(question=args.query, use_llm=args.llm)
+    if hasattr(response, 'answer') and response.answer:
+        # Only print if answer is not empty/blank
+        answer_str = str(response.answer).strip()
+        if answer_str:
+            # Only print to terminal, do not log to avoid duplicate output
+            print(f"\nAnswer: {answer_str}")
+        else:
+            logging.info("No answer returned by LLM.")
+            print("No answer returned by LLM.")
+    elif hasattr(response, 'context') and response.context:
+        # Only print to terminal, do not log to avoid duplicate output
+        print("\nReranked Results (Context):")
+        if isinstance(response.context, list):
+            for i, doc in enumerate(response.context, 1):
+                print(f"[{i}] {doc}")
+        else:
+            print(response.context)
+    else:
+        print("No answer or reranked context returned.")

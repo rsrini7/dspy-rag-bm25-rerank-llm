@@ -24,13 +24,17 @@ class RAGHybridFusedRerank(dspy.Module):
         ranked = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
         return [doc for doc, _ in ranked[:self.rerank_k]]
 
-    def forward(self, question):
+    def forward(self, question, use_llm=True):
         vector_results = self.vector_retrieve(question)
         keyword_results = self.keyword_retrieve(question)
         fused_docs = {doc['long_text']: doc for doc in vector_results + keyword_results}
         fused_list = list(fused_docs.values())
         reranked_docs = self.rerank(question, [doc['long_text'] for doc in fused_list])
         context = "\n".join(reranked_docs)
+        if not use_llm:
+            # Return context as main result if LLM is disabled
+            return type('RAGResult', (), {'context': reranked_docs, 'answer': None})()
         with dspy.settings.context(lm=self.llm):
             prediction = self.generate(question=question, context=context)
+            prediction.context = reranked_docs
             return prediction

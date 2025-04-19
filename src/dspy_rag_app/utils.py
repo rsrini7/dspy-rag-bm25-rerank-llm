@@ -144,12 +144,8 @@ def create_retrievers(collection: chromadb.Collection,
 def create_rag_pipeline(vector_retriever: ChromaRetriever,
                         keyword_retriever: BM25Retriever,
                         reranker_model: CrossEncoder,
-                        llm: dspy.LM) -> RAGHybridFusedRerank | None:
-    """Instantiates the RAG pipeline if LLM is available, using config K_RERANK."""
-    if not llm:
-        logging.warning("LLM not available, cannot create RAG pipeline.")
-        return None
-
+                        llm: dspy.LM) -> RAGHybridFusedRerank:
+    """Instantiates the RAG pipeline, using config K_RERANK. Allows llm to be None for rerank-only mode."""
     logging.info("Initializing RAG pipeline...")
     rag_pipeline = RAGHybridFusedRerank(
         vector_retriever=vector_retriever,

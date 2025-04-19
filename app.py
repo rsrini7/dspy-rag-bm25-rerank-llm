@@ -216,27 +216,25 @@ elif not st.session_state.rag_pipeline:
      st.warning("RAG Pipeline not initialized (LLM configuration failed or missing). Cannot generate answers.")
 else:
     question = st.text_input("Enter your question:")
+    enable_llm = st.checkbox("Enable LLM Generation", value=False, help="If unchecked, only reranked context will be shown; no LLM answer will be generated.")
 
     if st.button("Search"):
         if question:
             with st.spinner("Searching..."):
                 try:
-                    # Use the stored RAG pipeline instance
-                    response = st.session_state.rag_pipeline(question=question)
-                    answer = response.answer
-
-                    st.subheader("Answer:")
-                    st.markdown(answer)
-
-                    # Display context if available in the response object
-                    if hasattr(response, 'context') and response.context:
-                         with st.expander("Show Final Context Used for Answer"):
-                             # Check if context is a list of strings or just a string
-                             if isinstance(response.context, list):
-                                 st.write("\n\n---\n\n".join(response.context))
-                             else:
-                                 st.write(response.context)
-
+                    response = st.session_state.rag_pipeline(question=question, use_llm=enable_llm)
+                    if enable_llm:
+                        answer = response.answer
+                        st.subheader("Answer:")
+                        st.markdown(answer)
+                    else:
+                        # Only show reranked context if LLM is disabled
+                        if hasattr(response, 'context') and response.context:
+                            st.subheader("Reranked Results (Context)")
+                            if isinstance(response.context, list):
+                                st.write("\n\n---\n\n".join(response.context))
+                            else:
+                                st.write(response.context)
                 except Exception as e:
                     st.error(f"An error occurred during search: {e}")
                     logging.error(f"Search error: {e}", exc_info=True)
