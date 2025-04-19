@@ -1,15 +1,7 @@
 import streamlit as st
-import logging # Import logging
 import io # For handling file uploads
+import logging # Import logging
 
-# Configure logging ASAP
-logging.basicConfig(level=logging.INFO)
-# Set httpx logger level to WARNING *before* importing modules that might use it
-logging.getLogger("httpx").setLevel(logging.WARNING)
-# Set LiteLLM logger level to WARNING (can stay here or move up too)
-logging.getLogger("LiteLLM").setLevel(logging.WARNING)
-
-# --- Now import project modules ---
 # --- Import from project files ---
 from dspy_rag_app.config import config
 from dspy_rag_app.bm25_utils import ensure_nltk_resources
@@ -19,6 +11,12 @@ from dspy_rag_app.utils import (
     index_chroma_data, create_bm25_index, create_retrievers, create_rag_pipeline
 )
 from rank_bm25 import BM25Okapi # Keep for cached function type hint
+
+logging.basicConfig(level=logging.INFO)
+# Set httpx logger level to WARNING *before* importing modules that might use it
+logging.getLogger("httpx").setLevel(logging.WARNING)
+# Set LiteLLM logger level to WARNING (can stay here or move up too)
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 # --- Ensure NLTK resources are available ---
 ensure_nltk_resources()

@@ -1,6 +1,6 @@
-import logging
 import argparse # Import argparse
 import os # Import os for path validation
+import logging
 
 # Configure logging ASAP
 logging.basicConfig(level=logging.INFO)

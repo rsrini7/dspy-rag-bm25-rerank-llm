@@ -10,8 +10,6 @@ from .bm25_utils import BM25Processor
 from .retrievers import ChromaRetriever, BM25Retriever
 from .rag_pipeline import RAGHybridFusedRerank
 
-logging.basicConfig(level=logging.INFO)
-
 def load_components(streamlit_mode: bool = False):
     """
     Loads the embedder, reranker, Chroma client, and LLM.

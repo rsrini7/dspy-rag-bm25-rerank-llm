@@ -3,6 +3,7 @@ from rank_bm25 import BM25Okapi
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+import logging
 
 def ensure_nltk_resources():
     """Ensure required NLTK resources are downloaded"""
