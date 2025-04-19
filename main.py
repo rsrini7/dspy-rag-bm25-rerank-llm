@@ -11,7 +11,7 @@ logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 # --- Now import project modules ---
 # Update imports to use the package structure
-from dspy_rag_app.config import CHROMA_COLLECTION_NAME
+from dspy_rag_app.config import config
 from dspy_rag_app.data import DOCUMENTS as DEFAULT_DOCUMENTS # Rename default import
 from dspy_rag_app.bm25_utils import ensure_nltk_resources
 # Import utility functions
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         embedder=embedder,
         documents=documents_to_index,
         doc_ids=document_ids,
-        collection_name=CHROMA_COLLECTION_NAME,
+        collection_name=config.CHROMA_COLLECTION_NAME,
         clear_existing=True
     )
 

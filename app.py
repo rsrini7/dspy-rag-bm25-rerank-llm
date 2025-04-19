@@ -11,7 +11,7 @@ logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 # --- Now import project modules ---
 # --- Import from project files ---
-from dspy_rag_app.config import CHROMA_COLLECTION_NAME
+from dspy_rag_app.config import config
 from dspy_rag_app.bm25_utils import ensure_nltk_resources
 # Import utility functions
 from dspy_rag_app.utils import (
@@ -49,7 +49,7 @@ def get_or_create_bm25_index_cached(docs_tuple: tuple[str]) -> BM25Okapi:
 def try_load_existing_data(client, embedder, reranker, llm):
     """Checks ChromaDB for existing data and loads it into session state if found."""
     try:
-        collection_name = CHROMA_COLLECTION_NAME + "_st"
+        collection_name = config.CHROMA_COLLECTION_NAME + "_st"
         logging.info(f"Checking for existing data in collection: {collection_name}")
         collection = client.get_collection(name=collection_name) # Use get_collection
 
@@ -158,7 +158,7 @@ with st.sidebar:
                 try:
                     st.session_state.documents = [doc for doc in docs_to_index if doc.strip()]
                     st.session_state.doc_ids = [f"doc_{i}" for i in range(len(st.session_state.documents))]
-                    collection_name = CHROMA_COLLECTION_NAME + "_st"
+                    collection_name = config.CHROMA_COLLECTION_NAME + "_st"
 
                     # Index in Chroma using utility function (clears by default)
                     st.session_state.collection = index_chroma_data(

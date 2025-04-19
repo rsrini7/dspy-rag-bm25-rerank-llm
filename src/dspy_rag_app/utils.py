@@ -5,12 +5,7 @@ import dspy
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from rank_bm25 import BM25Okapi
 # Relative import for project components
-from .config import (
-    EMBEDDER_MODEL, RERANKER_MODEL, LLM_MODEL,
-    CHROMA_DB_PATH, CHROMA_DB_PATH_ST, # Added CHROMA_DB_PATH_ST
-    OPENROUTER_API_KEY,
-    K_EMBEDDING_RETRIEVAL, K_BM25_RETRIEVAL, K_RERANK
-)
+from .config import config
 from .bm25_utils import BM25Processor
 from .retrievers import ChromaRetriever, BM25Retriever
 from .rag_pipeline import RAGHybridFusedRerank
@@ -31,16 +26,16 @@ def load_components(streamlit_mode: bool = False):
     logging.info("--- Loading Components ---")
 
     # Load Embedder
-    logging.info(f"Initializing Embedder: {EMBEDDER_MODEL}")
-    embedder = SentenceTransformer(EMBEDDER_MODEL)
+    logging.info(f"Initializing Embedder: {config.EMBEDDER_MODEL}")
+    embedder = SentenceTransformer(config.EMBEDDER_MODEL)
 
     # Load Reranker
-    logging.info(f"Initializing Reranker: {RERANKER_MODEL}")
-    reranker = CrossEncoder(RERANKER_MODEL)
+    logging.info(f"Initializing Reranker: {config.RERANKER_MODEL}")
+    reranker = CrossEncoder(config.RERANKER_MODEL)
 
     # Setup ChromaDB Client
     # Determine path based on mode (using CHROMA_DB_PATH_ST for streamlit)
-    db_path = CHROMA_DB_PATH_ST if streamlit_mode else CHROMA_DB_PATH
+    db_path = config.CHROMA_DB_PATH_ST if streamlit_mode else config.CHROMA_DB_PATH
     logging.info(f"Initializing ChromaDB Client (Path: {db_path})")
     # Initialize client with telemetry disabled using Settings
     client = chromadb.PersistentClient(
@@ -50,12 +45,12 @@ def load_components(streamlit_mode: bool = False):
 
     # Setup LLM (DSPy LM)
     llm = None
-    if OPENROUTER_API_KEY:
+    if config.OPENROUTER_API_KEY:
         try:
-            logging.info(f"Attempting to configure LLM: {LLM_MODEL} via OpenRouter")
+            logging.info(f"Attempting to configure LLM: {config.LLM_MODEL} via OpenRouter")
             llm = dspy.LM(
-                model=LLM_MODEL,
-                api_key=OPENROUTER_API_KEY,
+                model=config.LLM_MODEL,
+                api_key=config.OPENROUTER_API_KEY,
                 api_base="https://openrouter.ai/api/v1",
                 provider="openrouter",
                 max_tokens=500 # Consider making this configurable if needed
@@ -139,12 +134,12 @@ def create_retrievers(collection: chromadb.Collection,
     chroma_retriever = ChromaRetriever(
         chroma_collection=collection,
         embed_model=embedder,
-        k=K_EMBEDDING_RETRIEVAL # Use config value
+        k=config.K_EMBEDDING_RETRIEVAL # Use config value
     )
     bm25_retriever = BM25Retriever(
         bm25_processor=bm25_processor,
         corpus=corpus,
-        k=K_BM25_RETRIEVAL # Use config value
+        k=config.K_BM25_RETRIEVAL # Use config value
     )
     logging.info("Retrievers initialized.")
     return chroma_retriever, bm25_retriever
@@ -164,7 +159,7 @@ def create_rag_pipeline(vector_retriever: ChromaRetriever,
         keyword_retriever=keyword_retriever,
         reranker_model=reranker_model,
         llm=llm,
-        rerank_k=K_RERANK # Use config value
+        rerank_k=config.K_RERANK # Use config value
     )
     logging.info("RAG pipeline initialized.")
     return rag_pipeline

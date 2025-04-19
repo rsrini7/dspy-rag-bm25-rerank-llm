@@ -81,6 +81,12 @@ CHROMA_DB_PATH_ST=./chroma_db_dspy_st   # Path for app.py (Streamlit)
 CHROMA_COLLECTION_NAME=hybrid_rag_docs
 ```
 
+**Configuration Usage Update:**
+All configuration variables (model names, retrieval parameters, ChromaDB paths, etc.) are now accessed via the `config` object in code. Do **not** import configuration values directly from `config.py`—instead, use `config.<VAR>` (e.g., `config.EMBEDDER_MODEL`, `config.K_BM25_RETRIEVAL`). This ensures a single source of truth and easier environment-driven configuration.
+
+- The `.env` file is loaded on startup, and all config values are available as attributes of the `config` object in `src/dspy_rag_app/config.py`.
+- If you add new config variables, update both `.env` and the `Config` class in `config.py`.
+
 ### 5. Download NLTK Data (if needed)
 The scripts (`main.py` and `app.py`) will automatically attempt to download 'punkt' and 'stopwords' via the `ensure_nltk_resources` function if they are not found in the standard NLTK data path.
 
