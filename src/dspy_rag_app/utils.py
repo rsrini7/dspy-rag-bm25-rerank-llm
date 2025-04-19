@@ -21,7 +21,6 @@ def load_components(streamlit_mode: bool = False):
     Returns:
         tuple: (embedder, reranker, client, llm)
     """
-    logging.info("--- Loading Components ---")
 
     # Load Embedder
     logging.info(f"Initializing Embedder: {config.EMBEDDER_MODEL}")

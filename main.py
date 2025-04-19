@@ -1,17 +1,8 @@
 import argparse # Import argparse
 import os # Import os for path validation
 import logging
-
-# Configure logging ASAP
-logging.basicConfig(level=logging.INFO)
-# Set httpx logger level to WARNING *before* importing modules that might use it
-logging.getLogger("httpx").setLevel(logging.WARNING)
-# Set LiteLLM logger level to WARNING (can stay here or move up too)
-logging.getLogger("LiteLLM").setLevel(logging.WARNING)
-
-# --- Now import project modules ---
-# Update imports to use the package structure
 from dspy_rag_app.config import config
+
 from dspy_rag_app.data import DOCUMENTS as DEFAULT_DOCUMENTS # Rename default import
 from dspy_rag_app.bm25_utils import ensure_nltk_resources
 # Import utility functions

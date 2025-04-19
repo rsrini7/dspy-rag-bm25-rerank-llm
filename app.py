@@ -12,12 +12,6 @@ from dspy_rag_app.utils import (
 )
 from rank_bm25 import BM25Okapi # Keep for cached function type hint
 
-logging.basicConfig(level=logging.INFO)
-# Set httpx logger level to WARNING *before* importing modules that might use it
-logging.getLogger("httpx").setLevel(logging.WARNING)
-# Set LiteLLM logger level to WARNING (can stay here or move up too)
-logging.getLogger("LiteLLM").setLevel(logging.WARNING)
-
 # --- Ensure NLTK resources are available ---
 ensure_nltk_resources()
 

@@ -3,8 +3,10 @@ import logging
 from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO)
-
-# --- Configuration ---
+# Set httpx logger level to WARNING *before* importing modules that might use it
+logging.getLogger("httpx").setLevel(logging.WARNING)
+# Set LiteLLM logger level to WARNING (can stay here or move up too)
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 # Load environment variables from .env
 load_dotenv()
