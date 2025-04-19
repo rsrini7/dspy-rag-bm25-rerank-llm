@@ -1,5 +1,5 @@
 [project]
-name = "dspy-test"
+name = "dspy-rag-bm25-rerank-llm"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -10,5 +10,13 @@ dependencies = [
     "sentence-transformers",
     "rank_bm25",
     "nltk",
-    "openrouter"
+    "openrouter",
+    "streamlit", # Add streamlit here
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]  # Tell setuptools to find packages in src
