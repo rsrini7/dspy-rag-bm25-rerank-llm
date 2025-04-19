@@ -39,6 +39,38 @@ This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built 
 *   **Logging Control**: Suppresses verbose `INFO` logs from underlying libraries like `httpx` and `LiteLLM`.
 *   **`src` Layout**: Organizes source code cleanly within a `src` directory.
 
+## Optional LLM Generation (Streamlit & CLI)
+
+Both the Streamlit app and the CLI now support toggling LLM answer generation. You can choose to either generate an answer using a large language model (LLM), or just view the top reranked context (retrieved documents) without LLM generation.
+
+### Streamlit Web App (`app.py`)
+
+When you run the Streamlit app, you'll see a checkbox labeled **"Enable LLM Generation"** in the sidebar:
+
+- **Checked:** The app will generate and display an LLM answer to your query (using the reranked context as input).
+- **Unchecked:** The app will only display the reranked context (top documents), without generating an LLM answer.
+
+This allows you to control LLM usage interactively during your session.
+
+### Command-Line Interface (`main.py`)
+
+The CLI provides a `--llm` flag to control LLM generation:
+
+- **With `--llm`:**
+  ```bash
+  uv run python main.py --query "What is DSPy?" --llm
+  ```
+  The pipeline will generate and print the LLM answer.
+- **Without `--llm`:**
+  ```bash
+  uv run python main.py --query "What is DSPy?"
+  ```
+  Only the reranked context (top documents) will be printed, with no LLM answer.
+
+This makes it easy to use the pipeline for pure retrieval/rerank or full RAG with LLM, depending on your needs.
+
+**Note:** LLM generation requires a valid API key and model configuration (see environment variables section below).
+
 ---
 
 ## Step-by-Step Setup & Usage
@@ -100,17 +132,18 @@ You have two main ways to run the application:
     **Arguments:**
     *   `-f, --file FILE_PATH`: (Optional) Path to a `.txt` file containing documents (one per line). If provided, these documents will be indexed instead of the defaults. Requires `--query` to be specified as well.
     *   `-q, --query QUERY_TEXT`: (Required) Query string to run against the indexed documents (either default or from `--file`).
+    *   `--llm`: (Optional) Enable LLM answer generation. If not set, only reranked context is shown.
 
     **Examples:**
     ```bash
-    # Example: Use default documents (from src/dspy_rag_app/data.py) and run a specific query
+    # Use default documents and run a specific query (reranked context only)
     uv run python main.py --query 'What is DSPy?'
 
-    # Example: Index 'my_docs.txt' and run a specific query
-    uv run python main.py --file path/to/my_docs.txt --query 'Summarize the file.'
+    # Use default documents and get an LLM answer
+    uv run python main.py --query 'What is DSPy?' --llm
 
-    # Running without arguments or with --file but no --query will show usage instructions.
-    uv run python main.py
+    # Index 'my_docs.txt' and run a specific query (LLM answer)
+    uv run python main.py --file path/to/my_docs.txt --query 'Summarize the file.' --llm
     ```
 
 *   **Streamlit Web Interface (app.py):**
