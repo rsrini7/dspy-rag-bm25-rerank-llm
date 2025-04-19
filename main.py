@@ -119,22 +119,22 @@ if __name__ == "__main__":
     )
 
     # Use the utility function to create the BM25 index
-    bm25_index = create_bm25_index(documents_to_index)
+    bm25_processor = create_bm25_index(documents_to_index)
 
-    if not collection or not bm25_index:
-         logging.error("Index creation failed. Cannot run RAG pipeline. Exiting.")
-         exit(1) # Exit if indexing failed
-
-    # --- Initialize and Run Pipeline ---
+    if not collection or not bm25_processor:
+        logging.error("Failed to create collection or BM25 processor.")
+        exit(1)
     logging.info("--- Initializing RAG Pipeline Components ---")
     # Use utility function to create retrievers
     chroma_retriever, bm25_retriever = create_retrievers(
         collection=collection,
         embedder=embedder,
-        bm25_index=bm25_index,
+        bm25_processor=bm25_processor,
         corpus=documents_to_index
     )
 
+    # --- Initialize and Run Pipeline ---
+    logging.info("--- Initializing RAG Pipeline Components ---")
     # Use utility function to create the RAG pipeline
     rag_pipeline = create_rag_pipeline(
         vector_retriever=chroma_retriever,

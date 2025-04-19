@@ -70,7 +70,7 @@ def try_load_existing_data(client, embedder, reranker, llm):
                 chroma_retriever, bm25_retriever = create_retrievers(
                     collection=st.session_state.collection,
                     embedder=embedder,
-                    bm25_index=st.session_state.bm25_index,
+                    bm25_processor=st.session_state.bm25_index,
                     corpus=st.session_state.documents
                 )
 
@@ -177,7 +177,7 @@ with st.sidebar:
                     chroma_retriever, bm25_retriever = create_retrievers(
                         collection=st.session_state.collection,
                         embedder=embedder,
-                        bm25_index=st.session_state.bm25_index,
+                        bm25_processor=st.session_state.bm25_index,
                         corpus=st.session_state.documents
                     )
 

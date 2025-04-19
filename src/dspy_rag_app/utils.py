@@ -11,10 +11,9 @@ from .config import (
     OPENROUTER_API_KEY,
     K_EMBEDDING_RETRIEVAL, K_BM25_RETRIEVAL, K_RERANK
 )
-from .bm25_utils import preprocess_for_bm25
+from .bm25_utils import BM25Processor
 from .retrievers import ChromaRetriever, BM25Retriever
 from .rag_pipeline import RAGHybridFusedRerank
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -124,17 +123,16 @@ def index_chroma_data(client: chromadb.PersistentClient,
     logging.info(f"Successfully indexed {len(documents)} documents in ChromaDB.")
     return collection
 
-def create_bm25_index(documents: list[str]) -> BM25Okapi:
-    """Preprocesses documents and creates a BM25Okapi index."""
+def create_bm25_index(documents: list[str]) -> BM25Processor:
+    """Preprocesses documents and creates a BM25Processor instance."""
     logging.info(f"Preprocessing {len(documents)} documents for BM25...")
-    tokenized_docs = preprocess_for_bm25(documents)
-    bm25_index = BM25Okapi(tokenized_docs)
-    logging.info("BM25 index created.")
-    return bm25_index
+    bm25_processor = BM25Processor(documents)
+    logging.info("BM25Processor created.")
+    return bm25_processor
 
 def create_retrievers(collection: chromadb.Collection,
                       embedder: SentenceTransformer,
-                      bm25_index: BM25Okapi,
+                      bm25_processor: BM25Processor,
                       corpus: list[str]) -> tuple[ChromaRetriever, BM25Retriever]:
     """Instantiates and returns Chroma and BM25 retrievers using config K values."""
     logging.info("Initializing retrievers...")
@@ -144,7 +142,7 @@ def create_retrievers(collection: chromadb.Collection,
         k=K_EMBEDDING_RETRIEVAL # Use config value
     )
     bm25_retriever = BM25Retriever(
-        bm25_index=bm25_index,
+        bm25_processor=bm25_processor,
         corpus=corpus,
         k=K_BM25_RETRIEVAL # Use config value
     )

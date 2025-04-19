@@ -11,7 +11,7 @@ dependencies = [
     "rank_bm25",
     "nltk",
     "openrouter",
-    "streamlit", # Add streamlit here
+    "streamlit",
 ]
 
 [build-system]

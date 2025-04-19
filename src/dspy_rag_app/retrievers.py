@@ -29,9 +29,9 @@ class ChromaRetriever(dspy.Retrieve):
         return final_results
 
 class BM25Retriever(dspy.Retrieve):
-    """DSPy Retriever using BM25Okapi for keyword search."""
-    def __init__(self, bm25_index, corpus, k=3):
-        self._bm25 = bm25_index
+    """DSPy Retriever using BM25Processor for keyword search."""
+    def __init__(self, bm25_processor, corpus, k=3):
+        self._bm25_processor = bm25_processor
         self._corpus = corpus
         self._k = k
         super().__init__(k=k)
@@ -39,13 +39,9 @@ class BM25Retriever(dspy.Retrieve):
     def forward(self, query_or_queries, k=None):
         k = k if k is not None else self._k
         queries = [query_or_queries] if isinstance(query_or_queries, str) else query_or_queries
-        stop_words = set(stopwords.words('english'))
         all_results = []
         for query in queries:
-            tokenized_query = [
-                word.lower() for word in word_tokenize(query) if word.isalnum() and word.lower() not in stop_words
-            ]
-            scores = self._bm25.get_scores(tokenized_query)
+            scores = self._bm25_processor.get_scores(query)
             indexed_scores = list(enumerate(scores))
             ranked_indices = sorted(indexed_scores, key=lambda x: x[1], reverse=True)[:k]
             top_docs = [self._corpus[idx] for idx, score in ranked_indices if score > 0]

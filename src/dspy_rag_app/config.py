@@ -10,20 +10,41 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 # Environment Variables and Constants (from .env)
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-EMBEDDER_MODEL = os.getenv("EMBEDDER_MODEL", "all-mpnet-base-v2")
-RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L6-v2")
-LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-3.5-turbo")
-K_EMBEDDING_RETRIEVAL = int(os.getenv("K_EMBEDDING_RETRIEVAL", 10))
-K_BM25_RETRIEVAL = int(os.getenv("K_BM25_RETRIEVAL", 10))
-K_RERANK = int(os.getenv("K_RERANK", 3))
-# --- ChromaDB Configuration ---
-CHROMA_DB_PATH = "./chroma_db_dspy" # Default path for CLI
-CHROMA_DB_PATH_ST = "./chroma_db_dspy_st" # Separate path for Streamlit
-CHROMA_COLLECTION_NAME = "hybrid_rag_docs" # Collection name for both CLI and Streamlit (will be suffixed in app.py)
+from typing import Dict, Any
+from pydantic import BaseModel
+
+class Config(BaseModel):
+    OPENROUTER_API_KEY: str
+    EMBEDDER_MODEL: str
+    RERANKER_MODEL: str
+    LLM_MODEL: str
+    K_EMBEDDING_RETRIEVAL: int
+    K_BM25_RETRIEVAL: int
+    K_RERANK: int
+    CHROMA_DB_PATH: str
+    CHROMA_DB_PATH_ST: str
+    CHROMA_COLLECTION_NAME: str
+
+# Load config from environment variables
+config = Config(**{
+    key: os.getenv(key)
+    for key in Config.__annotations__.keys()
+})
+
+# Expose configuration values
+CHROMA_COLLECTION_NAME = config.CHROMA_COLLECTION_NAME
+CHROMA_DB_PATH = config.CHROMA_DB_PATH
+CHROMA_DB_PATH_ST = config.CHROMA_DB_PATH_ST
+OPENROUTER_API_KEY = config.OPENROUTER_API_KEY
+EMBEDDER_MODEL = config.EMBEDDER_MODEL
+RERANKER_MODEL = config.RERANKER_MODEL
+LLM_MODEL = config.LLM_MODEL
+K_EMBEDDING_RETRIEVAL = config.K_EMBEDDING_RETRIEVAL
+K_BM25_RETRIEVAL = config.K_BM25_RETRIEVAL
+K_RERANK = config.K_RERANK
 
 # --- Retrieval Configuration ---
 K_EMBEDDING_RETRIEVAL = 5 # Number of documents to retrieve using embeddings
 
-if not OPENROUTER_API_KEY:
+if not config.OPENROUTER_API_KEY:
     logging.warning("OPENROUTER_API_KEY environment variable not set. LLM calls will fail.")

@@ -1,5 +1,6 @@
-# --- Sample Data ---
-DOCUMENTS = [
+from typing import List, Dict
+
+DOCUMENTS: List[str] = [
     "Python is a versatile high-level programming language widely used for web development, data science, artificial intelligence, and scripting.",
     "DSPy is a framework from Stanford NLP for algorithmically optimizing Language Model prompts and weights, especially for complex pipelines.",
     "Chroma is an open-source embedding database (vector store) designed to make it easy to build LLM apps by making knowledge, facts, and skills pluggable.",
