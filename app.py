@@ -90,6 +90,16 @@ def try_load_existing_data(client, embedder, reranker, llm):
 # --- Streamlit App ---
 st.title("📄 RAG Pipeline Interface")
 
+# Add project description below the title
+st.markdown("""
+This application demonstrates a Retrieval-Augmented Generation (RAG) pipeline built with DSPy.
+It combines keyword search (BM25) and dense vector search (ChromaDB with Sentence Transformers)
+followed by a reranking step (Cross-Encoder) to retrieve relevant context for a Language Model (LLM)
+to generate an answer.
+
+Use the sidebar to load and index your text data before asking questions.
+""")
+
 # --- Initialization ---
 embedder, reranker, client, llm = cached_load_components()
 

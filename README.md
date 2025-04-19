@@ -19,6 +19,14 @@
 5.  **LLM Generation**: The top reranked context is sent to an LLM (via OpenRouter) to generate a final answer.
 6.  **Answer Output**: The answer is returned to the user.
 
+---
+
+## Project Overview
+
+This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built with DSPy. It combines keyword search (BM25) and dense vector search (ChromaDB with Sentence Transformers) followed by a reranking step (Cross-Encoder) to retrieve relevant context for a Language Model (LLM) to generate an answer. The project includes both a command-line interface (`main.py`) and an interactive Streamlit web application (`app.py`).
+
+---
+
 ## Features
 
 *   **Hybrid Retrieval**: Combines dense embedding (vector) search and BM25 keyword search.
