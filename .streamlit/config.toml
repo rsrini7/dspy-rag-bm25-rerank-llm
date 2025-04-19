@@ -1,0 +1,4 @@
+[server]
+# Use 'poll' for potentially more compatible (but maybe less efficient) watching
+# Use 'none' to disable file watching completely (error gone, but no auto-reload)
+fileWatcherType = "poll"

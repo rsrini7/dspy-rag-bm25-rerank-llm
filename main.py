@@ -1,3 +1,15 @@
+import logging
+import argparse # Import argparse
+import os # Import os for path validation
+
+# Configure logging ASAP
+logging.basicConfig(level=logging.INFO)
+# Set httpx logger level to WARNING *before* importing modules that might use it
+logging.getLogger("httpx").setLevel(logging.WARNING)
+# Set LiteLLM logger level to WARNING (can stay here or move up too)
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+
+# --- Now import project modules ---
 # Update imports to use the package structure
 from dspy_rag_app.config import CHROMA_COLLECTION_NAME
 from dspy_rag_app.data import DOCUMENTS as DEFAULT_DOCUMENTS # Rename default import
@@ -7,11 +19,6 @@ from dspy_rag_app.utils import (
     load_components,
     index_chroma_data, create_bm25_index, create_retrievers, create_rag_pipeline
 )
-import logging
-import argparse # Import argparse
-import os # Import os for path validation
-
-logging.basicConfig(level=logging.INFO)
 
 # --- Function to load documents from file ---
 def load_documents_from_file(filepath):

@@ -1,12 +1,14 @@
 import logging
 import chromadb
+from chromadb.config import Settings # Import Settings
 import dspy
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from rank_bm25 import BM25Okapi
 # Relative import for project components
 from .config import (
     EMBEDDER_MODEL, RERANKER_MODEL, LLM_MODEL,
-    CHROMA_DB_PATH, OPENROUTER_API_KEY,
+    CHROMA_DB_PATH, CHROMA_DB_PATH_ST, # Added CHROMA_DB_PATH_ST
+    OPENROUTER_API_KEY,
     K_EMBEDDING_RETRIEVAL, K_BM25_RETRIEVAL, K_RERANK
 )
 from .bm25_utils import preprocess_for_bm25
@@ -38,9 +40,14 @@ def load_components(streamlit_mode: bool = False):
     reranker = CrossEncoder(RERANKER_MODEL)
 
     # Setup ChromaDB Client
-    db_path = CHROMA_DB_PATH + ("_st" if streamlit_mode else "")
+    # Determine path based on mode (using CHROMA_DB_PATH_ST for streamlit)
+    db_path = CHROMA_DB_PATH_ST if streamlit_mode else CHROMA_DB_PATH
     logging.info(f"Initializing ChromaDB Client (Path: {db_path})")
-    client = chromadb.PersistentClient(path=db_path)
+    # Initialize client with telemetry disabled using Settings
+    client = chromadb.PersistentClient(
+        path=db_path,
+        settings=Settings(anonymized_telemetry=False) # Disable telemetry
+    )
 
     # Setup LLM (DSPy LM)
     llm = None
