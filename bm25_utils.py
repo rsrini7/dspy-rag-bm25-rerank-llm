@@ -1,16 +1,19 @@
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 def ensure_nltk_resources():
     try:
         nltk.data.find('tokenizers/punkt')
         nltk.data.find('corpora/stopwords')
     except LookupError:
-        print("Downloading NLTK resources (punkt, stopwords)...")
+        logging.info("Downloading NLTK resources (punkt, stopwords)...")
         nltk.download('punkt', quiet=True, download_dir='.venv/nltk_data')
         nltk.download('stopwords', quiet=True, download_dir='.venv/nltk_data')
-        print("NLTK resources downloaded.")
+        logging.info("NLTK resources downloaded.")
 
 def preprocess_for_bm25(documents):
     stop_words = set(stopwords.words('english'))

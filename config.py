@@ -1,6 +1,8 @@
 import os
-import warnings
+import logging
 from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
 
 # --- Configuration ---
 
@@ -19,4 +21,4 @@ CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_db_dspy")
 CHROMA_COLLECTION_NAME = os.getenv("CHROMA_COLLECTION_NAME", "hybrid_rag_docs")
 
 if not OPENROUTER_API_KEY:
-    warnings.warn("OPENROUTER_API_KEY environment variable not set. LLM calls will fail.")
+    logging.warning("OPENROUTER_API_KEY environment variable not set. LLM calls will fail.")

@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(level=logging.INFO)
+
 import dspy
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
