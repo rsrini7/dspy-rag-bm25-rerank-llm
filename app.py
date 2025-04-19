@@ -1,46 +1,43 @@
 import streamlit as st
-from sentence_transformers import SentenceTransformer, CrossEncoder
-from rank_bm25 import BM25Okapi
 import logging
 import io # For handling file uploads
 
-# --- Import from project files (Update these) ---
-from dspy_rag_app.config import ( 
-    K_EMBEDDING_RETRIEVAL, K_BM25_RETRIEVAL, K_RERANK, CHROMA_COLLECTION_NAME
+# --- Import from project files ---
+from dspy_rag_app.config import CHROMA_COLLECTION_NAME
+from dspy_rag_app.bm25_utils import ensure_nltk_resources
+# Import utility functions
+from dspy_rag_app.utils import (
+    load_components,
+    index_chroma_data, create_bm25_index, create_retrievers, create_rag_pipeline
 )
-from dspy_rag_app.bm25_utils import ensure_nltk_resources, preprocess_for_bm25 # Import from bm25_utils.py
-from dspy_rag_app.retrievers import ChromaRetriever, BM25Retriever # Import from retrievers.py
-from dspy_rag_app.rag_pipeline import RAGHybridFusedRerank # Import from rag_pipeline.py
-from dspy_rag_app.utils import load_components, initialize_dspy # Import the new utility functions
+from rank_bm25 import BM25Okapi # Keep for cached function type hint
 
 logging.basicConfig(level=logging.INFO) # Configure logging
 
 # --- Ensure NLTK resources are available ---
-# Use the imported function
 ensure_nltk_resources()
 
 # --- Cached Resource Loading using Utils ---
-
-@st.cache_resource # Use cache_resource for expensive loads like models/clients
+@st.cache_resource
 def cached_load_components():
     """Cached function to load components using the utility function for Streamlit."""
     logging.info("Executing cached_load_components...")
-    # Calls the utility function with streamlit_mode=True
-    # Use the imported function
     embedder, reranker, client, llm = load_components(streamlit_mode=True)
-    # Display LLM status in the UI after loading (can be helpful)
     if not llm:
          st.warning("LLM configuration failed or API key missing. Search will be limited.")
     return embedder, reranker, client, llm
 
-@st.cache_data # Cache the preprocessing function result based on input docs
-def get_tokenized_docs(docs):
-    """Preprocesses documents for BM25 using the utility function."""
-    logging.info(f"Preprocessing {len(docs)} documents for BM25...")
-    # Use the imported function
-    tokenized = preprocess_for_bm25(docs)
-    logging.info("BM25 preprocessing done.")
-    return tokenized
+# Keep caching for BM25 index creation as preprocessing might be slow
+@st.cache_data
+def get_or_create_bm25_index_cached(docs_tuple: tuple[str]) -> BM25Okapi:
+    """Cached function to preprocess documents and create BM25 index."""
+    # Convert tuple back to list for processing
+    documents = list(docs_tuple)
+    # Use the utility function internally, but cache the result
+    # Note: This uses the non-cached preprocess_for_bm25 inside create_bm25_index
+    # If preprocess_for_bm25 itself is very slow, it could also be cached separately.
+    return create_bm25_index(documents)
+
 
 # --- Attempt to Load Existing Data ---
 def try_load_existing_data(client, embedder, reranker, llm):
@@ -48,63 +45,49 @@ def try_load_existing_data(client, embedder, reranker, llm):
     try:
         collection_name = CHROMA_COLLECTION_NAME + "_st"
         logging.info(f"Checking for existing data in collection: {collection_name}")
-        # Attempt to get the collection; this might raise an exception if it doesn't exist
-        collection = client.get_collection(name=collection_name)
+        collection = client.get_collection(name=collection_name) # Use get_collection
 
         if collection.count() > 0:
             logging.info(f"Found {collection.count()} documents in existing collection. Loading...")
             with st.spinner("Loading existing indexed data..."):
                 # Retrieve documents and IDs
-                results = collection.get(include=['documents']) # Only need documents for BM25
+                results = collection.get(include=['documents'])
                 st.session_state.documents = results['documents']
                 st.session_state.doc_ids = results['ids']
                 st.session_state.collection = collection # Store collection handle
 
-                # Rebuild BM25 index
-                tokenized_docs = get_tokenized_docs(tuple(st.session_state.documents))
-                st.session_state.bm25_index = BM25Okapi(tokenized_docs)
+                # Rebuild BM25 index using the cached function
+                st.session_state.bm25_index = get_or_create_bm25_index_cached(tuple(st.session_state.documents))
                 logging.info("BM25 index rebuilt from loaded data.")
 
-                # Instantiate Retrievers
-                chroma_retriever = ChromaRetriever(
-                    chroma_collection=st.session_state.collection,
-                    embed_model=embedder,
-                    k=K_EMBEDDING_RETRIEVAL
-                )
-                bm25_retriever = BM25Retriever(
+                # Instantiate Retrievers using utility function
+                chroma_retriever, bm25_retriever = create_retrievers(
+                    collection=st.session_state.collection,
+                    embedder=embedder,
                     bm25_index=st.session_state.bm25_index,
-                    corpus=st.session_state.documents,
-                    k=K_BM25_RETRIEVAL
+                    corpus=st.session_state.documents
                 )
 
-                # Instantiate RAG pipeline if LLM is available
-                if llm:
-                    st.session_state.rag_pipeline = RAGHybridFusedRerank(
-                        vector_retriever=chroma_retriever,
-                        keyword_retriever=bm25_retriever,
-                        reranker_model=reranker,
-                        llm=llm,
-                        rerank_k=K_RERANK
-                    )
-                    logging.info("RAG pipeline initialized with loaded data.")
-                else:
-                    st.session_state.rag_pipeline = None
-                    logging.warning("LLM not available, RAG pipeline not initialized.")
+                # Instantiate RAG pipeline using utility function
+                st.session_state.rag_pipeline = create_rag_pipeline(
+                    vector_retriever=chroma_retriever,
+                    keyword_retriever=bm25_retriever,
+                    reranker_model=reranker,
+                    llm=llm
+                )
 
                 st.session_state.data_indexed = True
                 logging.info("Existing data loaded successfully.")
-                st.success(f"Loaded {len(st.session_state.documents)} documents from existing database.") # User feedback
-                return True # Indicate success
+                st.success(f"Loaded {len(st.session_state.documents)} documents from existing database.")
+                return True
         else:
             logging.info("Existing collection found but is empty.")
             return False
     except Exception as e:
-        # Handle cases where the collection doesn't exist or other errors occur
         logging.info(f"Could not load existing data (may be first run or an error): {e}")
         return False
 
 # --- Streamlit App ---
-
 st.title("📄 RAG Pipeline Interface")
 
 # --- Initialization ---
@@ -126,7 +109,6 @@ if 'data_indexed' not in st.session_state:
     st.session_state.data_indexed = False # Default to False
 
 # --- Attempt Auto-Load ---
-# Try loading ONLY if data hasn't been marked as indexed in this specific session run yet
 if not st.session_state.data_indexed:
     try_load_existing_data(client, embedder, reranker, llm)
 
@@ -146,8 +128,7 @@ with st.sidebar:
     else:
         pasted_text = st.text_area("Paste text (one document per line)", height=200)
 
-    # The "Load and Index Data" button now primarily handles *new* uploads or overwrites
-    if st.button("Load and Index New Data"): # Changed button text slightly for clarity
+    if st.button("Load and Index New Data"):
         docs_to_index = []
         if uploaded_files:
             for uploaded_file in uploaded_files:
@@ -157,62 +138,47 @@ with st.sidebar:
             docs_to_index = pasted_text.strip().split('\n')
 
         if docs_to_index:
-            with st.spinner("Processing and indexing new data..."): # Updated spinner text
+            with st.spinner("Processing and indexing new data..."):
                 try:
                     st.session_state.documents = [doc for doc in docs_to_index if doc.strip()]
                     st.session_state.doc_ids = [f"doc_{i}" for i in range(len(st.session_state.documents))]
-
-                    # Get/Create Chroma Collection using config name + _st
                     collection_name = CHROMA_COLLECTION_NAME + "_st"
-                    st.session_state.collection = client.get_or_create_collection(collection_name)
-                    logging.info(f"Using Chroma Collection: {collection_name}")
 
-                    # Clear existing data before adding new data
-                    logging.info(f"Clearing existing data from collection '{collection_name}' before indexing new data...")
-                    existing_ids = st.session_state.collection.get(include=[])['ids']
-                    if existing_ids:
-                        st.session_state.collection.delete(ids=existing_ids)
-
-                    # Index in Chroma
-                    logging.info("Encoding and indexing in ChromaDB...")
-                    embeddings = embedder.encode(st.session_state.documents, show_progress_bar=False)
-                    st.session_state.collection.upsert(
+                    # Index in Chroma using utility function (clears by default)
+                    st.session_state.collection = index_chroma_data(
+                        client=client,
+                        embedder=embedder,
                         documents=st.session_state.documents,
-                        embeddings=embeddings.tolist(),
-                        ids=st.session_state.doc_ids
+                        doc_ids=st.session_state.doc_ids,
+                        collection_name=collection_name,
+                        clear_existing=True # Explicitly clear when loading new data
                     )
-                    logging.info(f"Indexed {len(st.session_state.documents)} new documents in ChromaDB.")
 
-                    # Create BM25 Index
-                    tokenized_docs = get_tokenized_docs(tuple(st.session_state.documents))
-                    st.session_state.bm25_index = BM25Okapi(tokenized_docs)
-                    logging.info("BM25 index created for new data.")
+                    # Create BM25 Index using cached function
+                    st.session_state.bm25_index = get_or_create_bm25_index_cached(tuple(st.session_state.documents))
 
-                    # Instantiate Retrievers
-                    chroma_retriever = ChromaRetriever(
-                        chroma_collection=st.session_state.collection,
-                        embed_model=embedder,
-                        k=K_EMBEDDING_RETRIEVAL
-                    )
-                    bm25_retriever = BM25Retriever(
+                    # Instantiate Retrievers using utility function
+                    chroma_retriever, bm25_retriever = create_retrievers(
+                        collection=st.session_state.collection,
+                        embedder=embedder,
                         bm25_index=st.session_state.bm25_index,
-                        corpus=st.session_state.documents,
-                        k=K_BM25_RETRIEVAL
+                        corpus=st.session_state.documents
                     )
 
-                    # Initialize RAG pipeline if LLM available
-                    if llm:
-                        st.session_state.rag_pipeline = RAGHybridFusedRerank(
-                            vector_retriever=chroma_retriever,
-                            keyword_retriever=bm25_retriever,
-                            reranker_model=reranker,
-                            llm=llm,
-                            rerank_k=K_RERANK
-                        )
+                    # Initialize RAG pipeline using utility function
+                    st.session_state.rag_pipeline = create_rag_pipeline(
+                        vector_retriever=chroma_retriever,
+                        keyword_retriever=bm25_retriever,
+                        reranker_model=reranker,
+                        llm=llm
+                    )
+
+                    # Update state based on whether pipeline was created
+                    if st.session_state.rag_pipeline:
                         st.session_state.data_indexed = True
                         st.success(f"Successfully indexed {len(st.session_state.documents)} new documents! RAG Pipeline is ready.")
                     else:
-                        st.session_state.rag_pipeline = None
+                        # If pipeline failed (no LLM), still mark data as indexed for search
                         st.session_state.data_indexed = True
                         st.info("New data indexing complete. Search available but final answer generation requires LLM.")
 
@@ -220,24 +186,24 @@ with st.sidebar:
                     st.error(f"An error occurred during indexing: {e}")
                     logging.error(f"Indexing error: {e}", exc_info=True)
                     st.session_state.data_indexed = False
-                    st.session_state.rag_pipeline = None
+                    st.session_state.rag_pipeline = None # Ensure pipeline is None on error
         else:
             st.warning("No documents provided to index.")
 
     # --- Sidebar Status Update ---
-    # This part remains the same, reflecting the current state of data_indexed
     if st.session_state.data_indexed:
         st.sidebar.success(f"{len(st.session_state.documents)} documents indexed.")
         if not st.session_state.rag_pipeline:
              st.sidebar.info("LLM not configured. Search limited.")
     else:
-        st.sidebar.info("Load data using the options above or data might load automatically if previously indexed.") # Updated info text
+        st.sidebar.info("Load data using the options above or data might load automatically if previously indexed.")
+
 
 # --- Main Search Area ---
 st.header("🔍 Search")
 
 if not st.session_state.data_indexed:
-    st.warning("Please load and index data using the sidebar, or wait for automatic loading if data exists.") # Updated warning
+    st.warning("Please load and index data using the sidebar, or wait for automatic loading if data exists.")
 elif not st.session_state.rag_pipeline:
      st.warning("RAG Pipeline not initialized (LLM configuration failed or missing). Cannot generate answers.")
 else:
@@ -254,9 +220,14 @@ else:
                     st.subheader("Answer:")
                     st.markdown(answer)
 
+                    # Display context if available in the response object
                     if hasattr(response, 'context') and response.context:
                          with st.expander("Show Final Context Used for Answer"):
-                             st.write(response.context)
+                             # Check if context is a list of strings or just a string
+                             if isinstance(response.context, list):
+                                 st.write("\n\n---\n\n".join(response.context))
+                             else:
+                                 st.write(response.context)
 
                 except Exception as e:
                     st.error(f"An error occurred during search: {e}")

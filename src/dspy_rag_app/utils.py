@@ -2,13 +2,17 @@ import logging
 import chromadb
 import dspy
 from sentence_transformers import SentenceTransformer, CrossEncoder
-# Option 1: Relative import
+from rank_bm25 import BM25Okapi
+# Relative import for project components
 from .config import (
     EMBEDDER_MODEL, RERANKER_MODEL, LLM_MODEL,
-    CHROMA_DB_PATH, OPENROUTER_API_KEY
+    CHROMA_DB_PATH, OPENROUTER_API_KEY,
+    K_EMBEDDING_RETRIEVAL, K_BM25_RETRIEVAL, K_RERANK
 )
-# Option 2: Absolute import
-# from dspy_rag_app.config import ( ... )
+from .bm25_utils import preprocess_for_bm25
+from .retrievers import ChromaRetriever, BM25Retriever
+from .rag_pipeline import RAGHybridFusedRerank
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -58,8 +62,6 @@ def load_components(streamlit_mode: bool = False):
         logging.warning("OpenRouter API Key not found. LLM features will be disabled.")
 
     # --- Initialize DSPy Settings HERE ---
-    # Configure DSPy settings immediately after LLM is loaded (or determined to be None)
-    # This ensures it happens only once when components are loaded.
     initialize_dspy(llm)
     # ------------------------------------
 
@@ -84,3 +86,80 @@ def initialize_dspy(llm):
              dspy.settings.configure(lm=None)
              logging.info("Cleared existing DSPy global LLM configuration.")
         return False
+
+# --- NEW UTILITY FUNCTIONS ---
+
+def index_chroma_data(client: chromadb.PersistentClient,
+                      embedder: SentenceTransformer,
+                      documents: list[str],
+                      doc_ids: list[str],
+                      collection_name: str,
+                      clear_existing: bool = True):
+    """Gets/Creates a Chroma collection, optionally clears it, and indexes data."""
+    logging.info(f"Getting/Creating Chroma Collection: {collection_name}")
+    collection = client.get_or_create_collection(collection_name)
+
+    if clear_existing:
+        existing_ids = collection.get(include=[])['ids']
+        if existing_ids:
+            logging.info(f"Clearing {len(existing_ids)} existing documents from collection '{collection_name}'.")
+            collection.delete(ids=existing_ids)
+        else:
+            logging.info(f"Collection '{collection_name}' is already empty or new.")
+
+    logging.info(f"Encoding and indexing {len(documents)} documents in ChromaDB collection '{collection_name}'...")
+    embeddings = embedder.encode(documents, show_progress_bar=False) # Progress bar off for utils
+    collection.upsert(
+        documents=documents,
+        embeddings=embeddings.tolist(),
+        ids=doc_ids
+    )
+    logging.info(f"Successfully indexed {len(documents)} documents in ChromaDB.")
+    return collection
+
+def create_bm25_index(documents: list[str]) -> BM25Okapi:
+    """Preprocesses documents and creates a BM25Okapi index."""
+    logging.info(f"Preprocessing {len(documents)} documents for BM25...")
+    tokenized_docs = preprocess_for_bm25(documents)
+    bm25_index = BM25Okapi(tokenized_docs)
+    logging.info("BM25 index created.")
+    return bm25_index
+
+def create_retrievers(collection: chromadb.Collection,
+                      embedder: SentenceTransformer,
+                      bm25_index: BM25Okapi,
+                      corpus: list[str]) -> tuple[ChromaRetriever, BM25Retriever]:
+    """Instantiates and returns Chroma and BM25 retrievers using config K values."""
+    logging.info("Initializing retrievers...")
+    chroma_retriever = ChromaRetriever(
+        chroma_collection=collection,
+        embed_model=embedder,
+        k=K_EMBEDDING_RETRIEVAL # Use config value
+    )
+    bm25_retriever = BM25Retriever(
+        bm25_index=bm25_index,
+        corpus=corpus,
+        k=K_BM25_RETRIEVAL # Use config value
+    )
+    logging.info("Retrievers initialized.")
+    return chroma_retriever, bm25_retriever
+
+def create_rag_pipeline(vector_retriever: ChromaRetriever,
+                        keyword_retriever: BM25Retriever,
+                        reranker_model: CrossEncoder,
+                        llm: dspy.LM) -> RAGHybridFusedRerank | None:
+    """Instantiates the RAG pipeline if LLM is available, using config K_RERANK."""
+    if not llm:
+        logging.warning("LLM not available, cannot create RAG pipeline.")
+        return None
+
+    logging.info("Initializing RAG pipeline...")
+    rag_pipeline = RAGHybridFusedRerank(
+        vector_retriever=vector_retriever,
+        keyword_retriever=keyword_retriever,
+        reranker_model=reranker_model,
+        llm=llm,
+        rerank_k=K_RERANK # Use config value
+    )
+    logging.info("RAG pipeline initialized.")
+    return rag_pipeline
