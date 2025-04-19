@@ -149,4 +149,3 @@ You have two main ways to run the application:
 *   [OpenRouter](https://openrouter.ai/)
 *   [uv](https://github.com/astral-sh/uv)
 *   [Streamlit](https://streamlit.io/)
-*   <mcfile name="app.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/app.py"></mcfile> - Contains the Streamlit application logic.
