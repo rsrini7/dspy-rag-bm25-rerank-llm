@@ -1,5 +1,10 @@
 # DSPy RAG Hybrid Pipeline with BM25, Embedding, Rerank and LLM
+---
+## Project Overview
 
+This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built with DSPy. It combines keyword search (BM25) and dense vector search (ChromaDB with Sentence Transformers) followed by a reranking step (Cross-Encoder) to retrieve relevant context for a Language Model (LLM) to generate an answer. The project includes both a command-line interface (`main.py`) with improved argument handling and an interactive Streamlit web application (`app.py`). ChromaDB telemetry is disabled, and separate database paths are used for the CLI and Streamlit app to prevent conflicts.
+
+---
 ## Architecture Diagram
 
 ![Hybrid RAG Pipeline Architecture](assets/architecture.png)
@@ -21,12 +26,6 @@
 
 ---
 
-## Project Overview
-
-This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built with DSPy. It combines keyword search (BM25) and dense vector search (ChromaDB with Sentence Transformers) followed by a reranking step (Cross-Encoder) to retrieve relevant context for a Language Model (LLM) to generate an answer. The project includes both a command-line interface (`main.py`) and an interactive Streamlit web application (`app.py`).
-
----
-
 ## Features
 
 *   **Hybrid Retrieval**: Combines dense embedding (vector) search and BM25 keyword search.
@@ -34,6 +33,10 @@ This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built 
 *   **Neural Reranking**: Uses a CrossEncoder model to rerank the fused results for relevance.
 *   **LLM Generation**: Generates answers using a large language model, conditioned on the top reranked context.
 *   **Streamlit Interface**: Provides a web UI for interacting with the RAG pipeline.
+*   **Command-Line Interface**: Offers a CLI (`main.py`) for indexing and querying, with clear argument requirements.
+*   **Separate DB Paths**: Uses distinct ChromaDB directories for CLI (`./chroma_db_dspy`) and Streamlit (`./chroma_db_dspy_st`) modes.
+*   **ChromaDB Telemetry Disabled**: Configured to prevent sending anonymized usage data.
+*   **Logging Control**: Suppresses verbose `INFO` logs from underlying libraries like `httpx` and `LiteLLM`.
 *   **`src` Layout**: Organizes source code cleanly within a `src` directory.
 
 ---
@@ -65,7 +68,7 @@ This will create a `.venv` directory and install all dependencies.
 
 ### 4. Prepare Environment Variables
 Create a `.env` file (see `.env.example`) with the following variables:
-```
+```dotenv
 OPENROUTER_API_KEY=your_openrouter_api_key
 EMBEDDER_MODEL=all-mpnet-base-v2
 RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L6-v2
@@ -73,7 +76,8 @@ LLM_MODEL=openai/gpt-3.5-turbo
 K_EMBEDDING_RETRIEVAL=10
 K_BM25_RETRIEVAL=10
 K_RERANK=3
-CHROMA_DB_PATH=./chroma_db_dspy
+CHROMA_DB_PATH=./chroma_db_dspy         # Path for main.py
+CHROMA_DB_PATH_ST=./chroma_db_dspy_st   # Path for app.py (Streamlit)
 CHROMA_COLLECTION_NAME=hybrid_rag_docs
 ```
 
@@ -85,13 +89,26 @@ The scripts (`main.py` and `app.py`) will automatically attempt to download 'pun
 You have two main ways to run the application:
 
 *   **Command-Line Interface (main.py):**
-    This script loads the default documents, indexes them, runs predefined queries, and shows the pipeline steps. Use `uv run` to execute it within the managed environment:
+    This script requires a query (`--query`) to run. Optionally, you can provide a file (`--file`) containing documents (one per line) to index its content. **If `--file` is not provided, the script uses a default set of documents defined in `src/dspy_rag_app/data.py`.** If you provide a file, a query is mandatory. Use `uv run` to execute it within the managed environment:
+
+    **Arguments:**
+    *   `-f, --file FILE_PATH`: (Optional) Path to a `.txt` file containing documents (one per line). If provided, these documents will be indexed instead of the defaults. Requires `--query` to be specified as well.
+    *   `-q, --query QUERY_TEXT`: (Required) Query string to run against the indexed documents (either default or from `--file`).
+
+    **Examples:**
     ```bash
+    # Example: Use default documents (from src/dspy_rag_app/data.py) and run a specific query
+    uv run python main.py --query 'What is DSPy?'
+
+    # Example: Index 'my_docs.txt' and run a specific query
+    uv run python main.py --file path/to/my_docs.txt --query 'Summarize the file.'
+
+    # Running without arguments or with --file but no --query will show usage instructions.
     uv run python main.py
     ```
 
 *   **Streamlit Web Interface (app.py):**
-    This provides an interactive web UI. It attempts to load previously indexed data automatically. If none exists, or if you want to index new data, you can upload/paste text and index it via the sidebar. Use `uv run` to start the Streamlit server:
+    This provides an interactive web UI. It attempts to load previously indexed data (from its specific path `chroma_db_dspy_st/`) automatically. If none exists, or if you want to index new data, you can upload/paste text and index it via the sidebar. Use `uv run` to start the Streamlit server:
     ```bash
     uv run streamlit run app.py
     ```
