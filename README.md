@@ -166,12 +166,56 @@ When you run `uv run python main.py --query 'some query'`:
 
 *   **Streamlit App (`app.py`)**: Follows a similar flow but uses the separate ChromaDB path (`_st` suffix). It attempts to load existing data first. If new data is provided via the UI, it calls the same utility functions (`index_chroma_data`, `create_bm25_index`, `create_retrievers`, `create_rag_pipeline`) to process and index it before enabling search. Suppresses `httpx` and `LiteLLM` info logs.
 
-### 8. Customization
+### 8. What Happens Internally (Example: `app.py` Streamlit execution)?
+
+When you run `uv run streamlit run app.py`:
+
+*   **Load Components (`utils.load_components`)**:
+    *   Loads configuration from `.env` via <mcfile name="config.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/config.py"></mcfile>.
+    *   Initializes the embedding model (`SentenceTransformer`), reranking model (`CrossEncoder`), and LLM (`dspy.LM` via OpenRouter).
+    *   Initializes the ChromaDB client (`chromadb.PersistentClient`) using the Streamlit path (`CHROMA_DB_PATH_ST`) and **disables telemetry**.
+    *   Configures DSPy settings globally with the loaded LLM.
+    *   Suppresses `INFO` level logs from `httpx` and `LiteLLM`.
+*   **Streamlit UI Initialization (`app.py`)**:
+    *   Renders the web interface, including sidebar for data upload and main area for querying.
+    *   Allows users to upload files or paste text to index new documents, or loads previously indexed data from the Streamlit ChromaDB path.
+*   **Index Data (on user action)**:
+    *   **ChromaDB Indexing**:
+        *   Gets or creates the ChromaDB collection specified in `config.py` (using the Streamlit path).
+        *   Clears any existing documents from the collection (default behavior).
+        *   Generates vector embeddings for the documents using the loaded embedder.
+        *   Upserts the documents, embeddings, and IDs into the ChromaDB collection.
+    *   **BM25 Indexing**:
+        *   Preprocesses the documents for keyword search using functions in <mcfile name="bm25_utils.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/bm25_utils.py"></mcfile> (e.g., tokenization, stopword removal via NLTK).
+        *   Builds a BM25 keyword index (`rank_bm25.BM25Okapi`) from the preprocessed documents.
+*   **Create Retrievers (`utils.create_retrievers`)**:
+    *   Instantiates the custom <mcsymbol name="ChromaRetriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="13" type="class"></mcsymbol> using the ChromaDB collection and embedder.
+    *   Instantiates the custom <mcsymbol name="BM25Retriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="35" type="class"></mcsymbol> using the BM25 index and the original document corpus.
+    *   Both retrievers are configured with their respective `k` values from `config.py`.
+*   **Create RAG Pipeline (`utils.create_rag_pipeline`)**:
+    *   Instantiates the main DSPy module, <mcsymbol name="RAGHybridFusedRerank" filename="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py" startline="10" type="class"></mcsymbol>, defined in <mcfile name="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py"></mcfile>.
+    *   This pipeline module integrates:
+        *   The vector retriever (<mcsymbol name="ChromaRetriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="13" type="class"></mcsymbol>).
+        *   The keyword retriever (<mcsymbol name="BM25Retriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="35" type="class"></mcsymbol>).
+        *   The reranking model (`CrossEncoder`).
+        *   The LLM (`dspy.LM`).
+    *   It's configured with the `rerank_k` value from `config.py`.
+*   **Run Query (on user action)**:
+    *   When the user enters a query and clicks 'Search', the pipeline is executed with the query.
+    *   Internally, the pipeline performs:
+        1.  Retrieval using both vector and keyword retrievers.
+        2.  Fusion and deduplication of results.
+        3.  Reranking using the CrossEncoder.
+        4.  Answer generation using the LLM.
+    *   The answer is displayed in the Streamlit UI.
+
+---
+### 9. Customization
 - Add your own default documents to the `DOCUMENTS` list in `src/dspy_rag_app/data.py`.
 - Change retrieval, rerank parameters, model names, or paths via the `.env` file.
 - Modify the core pipeline logic in `src/dspy_rag_app/rag_pipeline.py` or the utility functions in `src/dspy_rag_app/utils.py`.
 
-### 9. Troubleshooting
+### 10. Troubleshooting
 - Ensure your `.env` is set up and API keys are valid.
 - If you see NLTK errors, delete `.venv/nltk_data` and rerun.
 - For LLM errors, check your OpenRouter API key and model name.
