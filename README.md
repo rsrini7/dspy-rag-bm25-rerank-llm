@@ -1,4 +1,4 @@
-# DSPy RAG Hybrid Pipeline with BM25, Embedding, Rerank and LLM
+# DSPy RAG Hybrid Pipeline and inference pipeline using LitServe with BM25, Embedding, Rerank and LLM
 ---
 ## Project Overview
 
@@ -152,6 +152,58 @@ You have two main ways to run the application:
     uv run streamlit run app.py
     ```
 
+## API Server (LitServe, `api.py`)
+
+A FastAPI-compatible API server is provided via `api.py` using [LitServe](https://github.com/Lightning-AI/litserve). This allows you to serve the full DSPy RAG pipeline as a REST API for programmatic access or integration with other services.
+
+### Running the API Server
+
+Start the API server:
+```bash
+uv run python api.py
+```
+
+By default, the server will listen on `localhost:8000` (configurable via LitServe options).
+
+### Programmatic API Usage (Python Client)
+
+You can interact with the API server programmatically using Python. The provided `client.py` script demonstrates how to send a POST request to the `/predict` endpoint:
+
+```python
+uv run python client.py
+```
+
+- Ensure the API server is running before executing the client script.
+
+### API Endpoint
+
+- **POST** `/predict`
+    - **Request Body:** JSON with a `question` field (string)
+    - **Example:**
+      ```json
+      { "question": "What is DSPy?" }
+      ```
+    - **Response:** JSON with the generated answer and supporting context.
+
+### Features
+- Loads all models, retrievers, and pipeline components on startup (see `setup` method in `api.py`).
+- Handles document indexing and BM25/ChromaDB setup automatically.
+- Returns detailed error messages for invalid requests or internal errors.
+- Uses the same configuration and document corpus as the CLI and Streamlit app.
+
+### Example cURL Request
+```bash
+curl -X POST http://localhost:8000/predict \
+     -H "Content-Type: application/json" \
+     -d '{"question": "What is DSPy?"}'
+```
+
+### Environment Variables
+- Uses `CHROMA_DB_PATH_API` for ChromaDB storage (see `.env.example`).
+- Requires `OPENROUTER_API_KEY` for LLM generation.
+
+See `api.py` for full implementation details and customization options.
+
 ### 7. What Happens Internally (Example: `main.py` execution)?
 
 When you run `uv run python main.py --query 'some query'`:
@@ -298,65 +350,3 @@ When you run `uv run streamlit run app.py`:
 *   [uv](https://github.com/astral-sh/uv)
 *   [Streamlit](https://streamlit.io/)
 
-
-
-## API Server (LitServe, `api.py`)
-
-A FastAPI-compatible API server is provided via `api.py` using [LitServe](https://github.com/Lightning-AI/litserve). This allows you to serve the full DSPy RAG pipeline as a REST API for programmatic access or integration with other services.
-
-### Running the API Server
-
-Install LitServe if you haven't already:
-```bash
-pip install litserve
-```
-
-Start the API server:
-```bash
-uv run python api.py
-```
-
-By default, the server will listen on `localhost:8000` (configurable via LitServe options).
-
-### Programmatic API Usage (Python Client)
-
-You can interact with the API server programmatically using Python. The provided `client.py` script demonstrates how to send a POST request to the `/predict` endpoint:
-
-```python
-import requests
-
-response = requests.post("http://127.0.0.1:8001/predict", json={"question": "what is dspy ?"})
-print(f"Status: {response.status_code}\nResponse:\n {response.text}")
-```
-
-- Replace the question in the payload as needed.
-- Ensure the API server is running before executing the client script.
-
-### API Endpoint
-
-- **POST** `/predict`
-    - **Request Body:** JSON with a `question` field (string)
-    - **Example:**
-      ```json
-      { "question": "What is DSPy?" }
-      ```
-    - **Response:** JSON with the generated answer and supporting context.
-
-### Features
-- Loads all models, retrievers, and pipeline components on startup (see `setup` method in `api.py`).
-- Handles document indexing and BM25/ChromaDB setup automatically.
-- Returns detailed error messages for invalid requests or internal errors.
-- Uses the same configuration and document corpus as the CLI and Streamlit app.
-
-### Example cURL Request
-```bash
-curl -X POST http://localhost:8000/predict \
-     -H "Content-Type: application/json" \
-     -d '{"question": "What is DSPy?"}'
-```
-
-### Environment Variables
-- Uses `CHROMA_DB_PATH_API` for ChromaDB storage (see `.env.example`).
-- Requires `OPENROUTER_API_KEY` for LLM generation.
-
-See `api.py` for full implementation details and customization options.
