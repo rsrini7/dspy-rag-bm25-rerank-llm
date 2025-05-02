@@ -24,6 +24,7 @@ class Config(BaseModel):
     K_BM25_RETRIEVAL: int
     K_RERANK: int
     CHROMA_DB_PATH: str
+    CHROMA_DB_PATH_API: str
     CHROMA_DB_PATH_ST: str
     CHROMA_COLLECTION_NAME: str
 
