@@ -32,16 +32,23 @@ This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built 
 *   **Fusion & Deduplication**: Merges results from both retrieval strategies.
 *   **Neural Reranking**: Uses a CrossEncoder model to rerank the fused results for relevance.
 *   **LLM Generation**: Generates answers using a large language model, conditioned on the top reranked context.
+*   **LitServe API**: Provides a RESTful API for programmatic access.
 *   **Streamlit Interface**: Provides a web UI for interacting with the RAG pipeline.
 *   **Command-Line Interface**: Offers a CLI (`cli.py`) for indexing and querying, with clear argument requirements.
-*   **Separate DB Paths**: Uses distinct ChromaDB directories for CLI (`./chroma_db_dspy`) and Streamlit (`./chroma_db_dspy_st`) modes.
+*   **Separate DB Paths**: Uses distinct ChromaDB directories for API (`./chroma_db_api`), CLI (`./chroma_db_dspy`) and Streamlit (`./chroma_db_dspy_st`) modes.
 *   **ChromaDB Telemetry Disabled**: Configured to prevent sending anonymized usage data.
 *   **Logging Control**: Suppresses verbose `INFO` logs from underlying libraries like `httpx` and `LiteLLM`.
 *   **`src` Layout**: Organizes source code cleanly within a `src` directory.
 
-## Optional LLM Generation (Streamlit & CLI)
+## Optional LLM Generation (API (through api_client), Streamlit & CLI)
 
-Both the Streamlit app and the CLI now support toggling LLM answer generation. You can choose to either generate an answer using a large language model (LLM), or just view the top reranked context (retrieved documents) without LLM generation.
+The Api (through api_client), Streamlit app and the CLI now support toggling LLM answer generation. You can choose to either generate an answer using a large language model (LLM), or just view the top reranked context (retrieved documents) without LLM generation.
+
+### LitServe API (`api.py`)
+The LitServe API server (`api.py`) supports both LLM generation and retrieval/rerank modes.
+
+- **api_client.py**
+    The `api_client.py` script provides a simple example of how to interact with the LitServe API server. It demonstrates how to send a POST request to the `/predict` endpoint with a JSON payload containing a query.
 
 ### Streamlit Web App (`app.py`)
 
@@ -120,7 +127,7 @@ All configuration variables (model names, retrieval parameters, ChromaDB paths, 
 - If you add new config variables, update both `.env` and the `Config` class in `config.py`.
 
 ### 5. Download NLTK Data (if needed)
-The scripts (`cli.py` and `app.py`) will automatically attempt to download 'punkt' and 'stopwords' via the `ensure_nltk_resources` function if they are not found in the standard NLTK data path.
+The scripts (`api.py`, `cli.py` and `app.py`) will automatically attempt to download 'punkt' and 'stopwords' via the `ensure_nltk_resources` function if they are not found in the standard NLTK data path.
 
 ### 6. Run the Application
 
@@ -185,7 +192,44 @@ You have two main ways to run the application:
         ```
         - **Response:** JSON with the generated answer and supporting context.
 
-    ### Features
+    ### Project Structure
+
+```
+dspy-rag-bm25-rerank-llm/
+├── .env.example             # Environment variables template
+├── .gitignore              # Git ignore rules
+├── .streamlit/             # Streamlit configuration
+│   └── config.toml         # Streamlit app settings
+├── .venv/                  # Python virtual environment
+├── README.md               # Project documentation (this file)
+├── api.py                  # LitServe API server
+├── api_client.py           # API client example
+├── app.py                  # Streamlit web interface
+├── assets/                 # Static assets
+│   ├── architecture-flow.png
+│   └── architecture.png
+├── cli.py                  # Command line interface
+├── memory-bank/            # Project documentation
+│   ├── activeContext.md
+│   ├── decisionLog.md
+│   ├── productContext.md
+│   ├── progress.md
+│   └── systemPatterns.md
+├── pyproject.toml         # Python project configuration
+├── src/                   # Source code
+│   └── dspy_rag_app/       # Main application package
+│       ├── __init__.py
+│       ├── bm25_utils.py   # BM25 utilities
+│       ├── config.py       # Configuration loader
+│       ├── data.py        # Default document data
+│       ├── nltk_utils.py   # NLTK utilities
+│       ├── rag_pipeline.py # RAG pipeline implementation
+│       ├── retrievers.py   # Custom retrievers
+│       └── utils.py        # Utility functions
+└── uv.lock                # UV dependency lock file
+```
+
+## Features
     - Loads all models, retrievers, and pipeline components on startup (see `setup` method in `api.py`).
     - Handles document indexing and BM25/ChromaDB setup automatically.
     - Returns detailed error messages for invalid requests or internal errors.
@@ -234,14 +278,14 @@ This design ensures that the API server is robust, modular, and ready for produc
 When you run `uv run python cli.py --query 'some query'`:
 
 *   **Load Components (`utils.load_components`)**:
-    *   Loads configuration from `.env` via <mcfile name="config.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/config.py"></mcfile>.
+    *   Loads configuration from `.env` via <mcfile name="config.py" path="src/dspy_rag_app/config.py"></mcfile>.
     *   Initializes the embedding model (`SentenceTransformer`), reranking model (`CrossEncoder`), and LLM (`dspy.LM` via OpenRouter).
     *   Initializes the ChromaDB client (`chromadb.PersistentClient`) using the CLI path (`CHROMA_DB_PATH`) and **disables telemetry**.
     *   Configures DSPy settings globally with the loaded LLM.
     *   Suppresses `INFO` level logs from `httpx` and `LiteLLM`.
 *   **Parse Arguments (`cli.py`)**:
     *   Processes command-line arguments (`--file`, `--query`).
-    *   Determines the document source: uses the file specified by `--file` or defaults to documents in <mcfile name="data.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/data.py"></mcfile> if `--file` is omitted.
+    *   Determines the document source: uses the file specified by `--file` or defaults to documents in <mcfile name="data.py" path="src/dspy_rag_app/data.py"></mcfile> if `--file` is omitted.
     *   Ensures a query is provided.
 *   **Index Data (`utils.index_chroma_data`, `utils.create_bm25_index`)**:
     *   **ChromaDB Indexing**:
@@ -250,14 +294,14 @@ When you run `uv run python cli.py --query 'some query'`:
         *   Generates vector embeddings for the documents using the loaded embedder.
         *   Upserts the documents, embeddings, and IDs into the ChromaDB collection.
     *   **BM25 Indexing**:
-        *   Preprocesses the documents for keyword search using functions in <mcfile name="bm25_utils.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/bm25_utils.py"></mcfile> (e.g., tokenization, stopword removal via NLTK).
+        *   Preprocesses the documents for keyword search using functions in <mcfile name="bm25_utils.py" path="src/dspy_rag_app/bm25_utils.py"></mcfile> (e.g., tokenization, stopword removal via NLTK).
         *   Builds a BM25 keyword index (`rank_bm25.BM25Okapi`) from the preprocessed documents.
 *   **Create Retrievers (`utils.create_retrievers`)**:
     *   Instantiates the custom <mcsymbol name="ChromaRetriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="13" type="class"></mcsymbol> using the ChromaDB collection and embedder.
     *   Instantiates the custom <mcsymbol name="BM25Retriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="35" type="class"></mcsymbol> using the BM25 index and the original document corpus.
     *   Both retrievers are configured with their respective `k` values from `config.py`.
 *   **Create RAG Pipeline (`utils.create_rag_pipeline`)**:
-    *   Instantiates the main DSPy module, <mcsymbol name="RAGHybridFusedRerank" filename="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py" startline="10" type="class"></mcsymbol>, defined in <mcfile name="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py"></mcfile>.
+    *   Instantiates the main DSPy module, <mcsymbol name="RAGHybridFusedRerank" filename="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py" startline="10" type="class"></mcsymbol>, defined in <mcfile name="rag_pipeline.py" path="src/dspy_rag_app/rag_pipeline.py"></mcfile>.
     *   This pipeline module integrates:
         *   The vector retriever (<mcsymbol name="ChromaRetriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="13" type="class"></mcsymbol>).
         *   The keyword retriever (<mcsymbol name="BM25Retriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="35" type="class"></mcsymbol>).
@@ -281,7 +325,7 @@ When you run `uv run python cli.py --query 'some query'`:
 When you run `uv run streamlit run app.py`:
 
 *   **Load Components (`utils.load_components`)**:
-    *   Loads configuration from `.env` via <mcfile name="config.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/config.py"></mcfile>.
+    *   Loads configuration from `.env` via <mcfile name="config.py" path="src/dspy_rag_app/config.py"></mcfile>.
     *   Initializes the embedding model (`SentenceTransformer`), reranking model (`CrossEncoder`), and LLM (`dspy.LM` via OpenRouter).
     *   Initializes the ChromaDB client (`chromadb.PersistentClient`) using the Streamlit path (`CHROMA_DB_PATH_ST`) and **disables telemetry**.
     *   Configures DSPy settings globally with the loaded LLM.
@@ -296,14 +340,14 @@ When you run `uv run streamlit run app.py`:
         *   Generates vector embeddings for the documents using the loaded embedder.
         *   Upserts the documents, embeddings, and IDs into the ChromaDB collection.
     *   **BM25 Indexing**:
-        *   Preprocesses the documents for keyword search using functions in <mcfile name="bm25_utils.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/bm25_utils.py"></mcfile> (e.g., tokenization, stopword removal via NLTK).
+        *   Preprocesses the documents for keyword search using functions in <mcfile name="bm25_utils.py" path="src/dspy_rag_app/bm25_utils.py"></mcfile> (e.g., tokenization, stopword removal via NLTK).
         *   Builds a BM25 keyword index (`rank_bm25.BM25Okapi`) from the preprocessed documents.
 *   **Create Retrievers (`utils.create_retrievers`)**:
     *   Instantiates the custom <mcsymbol name="ChromaRetriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="13" type="class"></mcsymbol> using the ChromaDB collection and embedder.
     *   Instantiates the custom <mcsymbol name="BM25Retriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="35" type="class"></mcsymbol> using the BM25 index and the original document corpus.
     *   Both retrievers are configured with their respective `k` values from `config.py`.
 *   **Create RAG Pipeline (`utils.create_rag_pipeline`)**:
-    *   Instantiates the main DSPy module, <mcsymbol name="RAGHybridFusedRerank" filename="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py" startline="10" type="class"></mcsymbol>, defined in <mcfile name="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py"></mcfile>.
+    *   Instantiates the main DSPy module, <mcsymbol name="RAGHybridFusedRerank" filename="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py" startline="10" type="class"></mcsymbol>, defined in <mcfile name="rag_pipeline.py" path="src/dspy_rag_app/rag_pipeline.py"></mcfile>.
     *   This pipeline module integrates:
         *   The vector retriever (<mcsymbol name="ChromaRetriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="13" type="class"></mcsymbol>).
         *   The keyword retriever (<mcsymbol name="BM25Retriever" filename="retrievers.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/retrievers.py" startline="35" type="class"></mcsymbol>).
@@ -335,44 +379,56 @@ When you run `uv run streamlit run app.py`:
 
 ## Project Structure
 
-```plaintext
-/Users/srini/Ws/dspy-rag-bm25-rerank-llm/
-├── .env                    # Local environment variables (ignored by git)
-├── .env.example            # Example environment variable file
-├── .git/                   # Git repository data
-├── .gitignore              # Git ignore configuration
-├── .venv/                  # Virtual environment created by uv
-├── app.py                  # Streamlit application entry point (uses utils.py)
-├── assets/                 # Directory for static assets (e.g., diagrams)
-│   ├── .keep               # Placeholder file
-│   ├── architecture.png
-│   └── architecture-flow.png
-├── cli.py                 # Command-line script entry point (uses utils.py)
-├── pyproject.toml          # Project metadata and dependencies (used by uv/setuptools)
-├── README.md               # This guide
-├── src/                    # Main source code directory
-│   └── dspy_rag_app/       # The core Python package for the RAG application
-│       ├── __init__.py     # Makes dspy_rag_app a Python package
-│       ├── bm25_utils.py   # Utilities for BM25 indexing (preprocessing, NLTK)
-│       ├── config.py       # Loads configuration settings (models, paths, keys) from .env
-│       ├── data.py         # Defines or loads the default document corpus for cli.py
-│       ├── rag_pipeline.py # Defines the main RAG DSPy module/pipeline (RAGHybridFusedRerank)
-│       ├── retrievers.py   # Custom DSPy retriever modules (ChromaRetriever, BM25Retriever)
-│       └── utils.py        # Shared utility functions (load components, index data, create retrievers/pipeline) used by cli.py and app.py
-├── uv.lock                 # uv lock file for reproducible dependencies
-└── chroma_db_dspy/         # Default ChromaDB storage location (for cli.py, ignored by git)
-└── chroma_db_dspy_st/      # Default ChromaDB storage location (for app.py, ignored by git)
+```
+dspy-rag-bm25-rerank-llm/
+├── .env.example             # Environment variables template
+├── .gitignore              # Git ignore rules
+├── .streamlit/             # Streamlit configuration
+│   └── config.toml         # Streamlit app settings
+├── .venv/                  # Python virtual environment
+├── README.md               # Project documentation (this file)
+├── api.py                  # LitServe API server
+├── api_client.py           # API client example
+├── app.py                  # Streamlit web interface
+├── assets/                 # Static assets
+├── cli.py                  # Command line interface
+├── memory-bank/            # Project documentation
+├── pyproject.toml         # Python project configuration
+├── src/                   # Source code
+│   └── dspy_rag_app/       # Main application package
+│       ├── __init__.py
+│       ├── bm25_utils.py   # BM25 utilities
+│       ├── config.py       # Configuration loader
+│       ├── data.py        # Default document data
+│       ├── nltk_utils.py   # NLTK utilities
+│       ├── rag_pipeline.py # RAG pipeline implementation
+│       ├── retrievers.py   # Custom retrievers
+│       └── utils.py        # Utility functions
+└── uv.lock                # UV dependency lock file
 ```
 
 ---
 
 ## References
 
-*   [DSPy](https://github.com/stanfordnlp/dspy)
-*   [ChromaDB](https://www.trychroma.com/)
-*   [BM25](https://en.wikipedia.org/wiki/Okapi_BM25)
-*   [Sentence Transformers](https://www.sbert.net/)
-*   [OpenRouter](https://openrouter.ai/)
-*   [uv](https://github.com/astral-sh/uv)
-*   [Streamlit](https://streamlit.io/)
+### Core Technologies
+- [DSPy](https://github.com/stanfordnlp/dspy): Framework for programming with foundation models
+- [LitServe](https://github.com/Lightning-AI/litserve): Lightweight model serving framework
+- [FastAPI](https://fastapi.tiangolo.com/): Modern Python web framework for APIs
+- [ChromaDB](https://www.trychroma.com/): Vector database for embeddings
+- [Sentence Transformers](https://www.sbert.net/): Library for sentence embeddings
+- [Cross-Encoder](https://www.sbert.net/examples/applications/cross-encoder/README.html): Reranking models
+- [BM25](https://en.wikipedia.org/wiki/Okapi_BM25): Probabilistic relevance algorithm
+
+### Supporting Libraries
+- [Streamlit](https://streamlit.io/): Web application framework
+- [NLTK](https://www.nltk.org/): Natural language toolkit
+- [OpenRouter](https://openrouter.ai/): Unified LLM API access
+- [uv](https://github.com/astral-sh/uv): Fast Python package installer
+
+### Documentation & Resources
+- [DSPy Documentation](https://dspy-docs.vercel.app/)
+- [LitServe Examples](https://github.com/Lightning-AI/litserve/tree/main/examples)
+- [FastAPI Tutorial](https://fastapi.tiangolo.com/tutorial/)
+- [ChromaDB Documentation](https://docs.trychroma.com/)
 
