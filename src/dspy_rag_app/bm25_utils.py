@@ -1,18 +1,8 @@
 from typing import List
 from rank_bm25 import BM25Okapi
-import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-import logging
-
-def ensure_nltk_resources():
-    """Ensure required NLTK resources are downloaded"""
-    try:
-        nltk.data.find('tokenizers/punkt')
-        nltk.data.find('corpora/stopwords')
-    except LookupError:
-        nltk.download('punkt')
-        nltk.download('stopwords')
+from dspy_rag_app.nltk_utils import ensure_nltk_resources
 
 class BM25Processor:
     def __init__(self, documents: List[str]):

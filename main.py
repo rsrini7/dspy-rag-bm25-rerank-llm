@@ -4,7 +4,7 @@ import logging
 from dspy_rag_app.config import config
 
 from dspy_rag_app.data import DOCUMENTS as DEFAULT_DOCUMENTS # Rename default import
-from dspy_rag_app.bm25_utils import ensure_nltk_resources
+from dspy_rag_app.nltk_utils import ensure_nltk_resources
 # Import utility functions
 from dspy_rag_app.utils import (
     load_components,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
     # --- Load Components using Utils ---
     logging.info("--- Loading Components ---")
-    embedder, reranker, client, llm = load_components() # streamlit_mode=False (default)
+    embedder, reranker, client, llm = load_components(db_path=config.CHROMA_DB_PATH) # streamlit_mode=False (default)
     if not llm:
         logging.error("DSPy Language Model not configured. Cannot run RAG pipeline. Exiting.")
         exit(1) # Exit if LLM failed

@@ -20,7 +20,7 @@ ensure_nltk_resources()
 def cached_load_components():
     """Cached function to load components using the utility function for Streamlit."""
     logging.info("Executing cached_load_components...")
-    embedder, reranker, client, llm = load_components(streamlit_mode=True)
+    embedder, reranker, client, llm = load_components(db_path=config.CHROMA_DB_PATH_ST)
     if not llm:
          st.warning("LLM configuration failed or API key missing. Search will be limited.")
     return embedder, reranker, client, llm

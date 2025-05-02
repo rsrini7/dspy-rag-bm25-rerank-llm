@@ -3,21 +3,20 @@ import chromadb
 from chromadb.config import Settings # Import Settings
 import dspy
 from sentence_transformers import SentenceTransformer, CrossEncoder
-from rank_bm25 import BM25Okapi
 # Relative import for project components
-from .config import config
-from .bm25_utils import BM25Processor
-from .retrievers import ChromaRetriever, BM25Retriever
-from .rag_pipeline import RAGHybridFusedRerank
+from dspy_rag_app.config import config
+from dspy_rag_app.bm25_utils import BM25Processor
+from dspy_rag_app.retrievers import ChromaRetriever, BM25Retriever
+from dspy_rag_app.rag_pipeline import RAGHybridFusedRerank
+import nltk
+import os
 
-def load_components(streamlit_mode: bool = False):
+def load_components(db_path: str = "chroma_db_default"):
     """
     Loads the embedder, reranker, Chroma client, and LLM.
 
     Args:
-        streamlit_mode (bool): If True, appends '_st' to the ChromaDB path
-                               to avoid conflicts when running main.py and app.py.
-
+        db_path (str): Path to the ChromaDB directory.
     Returns:
         tuple: (embedder, reranker, client, llm)
     """
@@ -31,13 +30,10 @@ def load_components(streamlit_mode: bool = False):
     reranker = CrossEncoder(config.RERANKER_MODEL)
 
     # Setup ChromaDB Client
-    # Determine path based on mode (using CHROMA_DB_PATH_ST for streamlit)
-    db_path = config.CHROMA_DB_PATH_ST if streamlit_mode else config.CHROMA_DB_PATH
     logging.info(f"Initializing ChromaDB Client (Path: {db_path})")
-    # Initialize client with telemetry disabled using Settings
     client = chromadb.PersistentClient(
         path=db_path,
-        settings=Settings(anonymized_telemetry=False) # Disable telemetry
+        settings=Settings(anonymized_telemetry=False)
     )
 
     # Setup LLM (DSPy LM)
@@ -50,19 +46,16 @@ def load_components(streamlit_mode: bool = False):
                 api_key=config.OPENROUTER_API_KEY,
                 api_base="https://openrouter.ai/api/v1",
                 provider="openrouter",
-                max_tokens=500 # Consider making this configurable if needed
+                max_tokens=500
             )
             logging.info("LLM configured successfully.")
         except Exception as e:
             logging.error(f"Failed to configure DSPy LM: {e}", exc_info=True)
-            llm = None # Ensure llm is None if setup fails
+            llm = None
     else:
         logging.warning("OpenRouter API Key not found. LLM features will be disabled.")
 
-    # --- Initialize DSPy Settings HERE ---
     initialize_dspy(llm)
-    # ------------------------------------
-
     logging.info("--- Components Loaded ---")
     return embedder, reranker, client, llm
 
@@ -156,3 +149,20 @@ def create_rag_pipeline(vector_retriever: ChromaRetriever,
     )
     logging.info("RAG pipeline initialized.")
     return rag_pipeline
+
+def ensure_nltk_resources():
+    """Ensure required NLTK resources are downloaded."""
+    # Get absolute path to .venv/nltk_data relative to this file
+    nltk_data_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', '..', '.venv', 'nltk_data')
+    )
+    if not os.path.exists(nltk_data_dir):
+        os.makedirs(nltk_data_dir, exist_ok=True)
+    if nltk_data_dir not in nltk.data.path:
+        nltk.data.path.insert(0, nltk_data_dir)
+    try:
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('punkt', download_dir=nltk_data_dir)
+        nltk.download('stopwords', download_dir=nltk_data_dir)
