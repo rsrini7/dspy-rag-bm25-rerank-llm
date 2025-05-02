@@ -47,8 +47,21 @@ The Api (through api_client), Streamlit app and the CLI now support toggling LLM
 ### LitServe API (`api.py`)
 The LitServe API server (`api.py`) supports both LLM generation and retrieval/rerank modes.
 
+    - Loads all models, retrievers, and pipeline components on startup (see `setup` method in `api.py`).
+    - Handles document indexing and BM25/ChromaDB setup automatically.
+    - Returns detailed error messages for invalid requests or internal errors.
+    - Uses the same configuration and document corpus as the CLI and Streamlit app.
+
 - **api_client.py**
     The `api_client.py` script provides a simple example of how to interact with the LitServe API server. It demonstrates how to send a POST request to the `/predict` endpoint with a JSON payload containing a query.
+    ### Example cURL Request
+    ```bash
+    curl -X POST http://localhost:8000/predict \
+        -H "Content-Type: application/json" \
+        -d '{"question": "What is DSPy?"}'
+    ```
+
+
 
 ### Streamlit Web App (`app.py`)
 
@@ -192,57 +205,8 @@ You have two main ways to run the application:
         ```
         - **Response:** JSON with the generated answer and supporting context.
 
-    ### Project Structure
 
-```
-dspy-rag-bm25-rerank-llm/
-├── .env.example             # Environment variables template
-├── .gitignore              # Git ignore rules
-├── .streamlit/             # Streamlit configuration
-│   └── config.toml         # Streamlit app settings
-├── .venv/                  # Python virtual environment
-├── README.md               # Project documentation (this file)
-├── api.py                  # LitServe API server
-├── api_client.py           # API client example
-├── app.py                  # Streamlit web interface
-├── assets/                 # Static assets
-│   ├── architecture-flow.png
-│   └── architecture.png
-├── cli.py                  # Command line interface
-├── memory-bank/            # Project documentation
-│   ├── activeContext.md
-│   ├── decisionLog.md
-│   ├── productContext.md
-│   ├── progress.md
-│   └── systemPatterns.md
-├── pyproject.toml         # Python project configuration
-├── src/                   # Source code
-│   └── dspy_rag_app/       # Main application package
-│       ├── __init__.py
-│       ├── bm25_utils.py   # BM25 utilities
-│       ├── config.py       # Configuration loader
-│       ├── data.py        # Default document data
-│       ├── nltk_utils.py   # NLTK utilities
-│       ├── rag_pipeline.py # RAG pipeline implementation
-│       ├── retrievers.py   # Custom retrievers
-│       └── utils.py        # Utility functions
-└── uv.lock                # UV dependency lock file
-```
-
-## Features
-    - Loads all models, retrievers, and pipeline components on startup (see `setup` method in `api.py`).
-    - Handles document indexing and BM25/ChromaDB setup automatically.
-    - Returns detailed error messages for invalid requests or internal errors.
-    - Uses the same configuration and document corpus as the CLI and Streamlit app.
-
-    ### Example cURL Request
-    ```bash
-    curl -X POST http://localhost:8000/predict \
-        -H "Content-Type: application/json" \
-        -d '{"question": "What is DSPy?"}'
-    ```
-
-## What Happens Internally (Example: api.py litserve execution)?
+### 7. What Happens Internally (Example: api.py litserve execution)?
 
 This section explains the internal flow when running the API server using `api.py` with LitServe, providing a step-by-step overview of what happens under the hood:
 
@@ -273,7 +237,7 @@ This section explains the internal flow when running the API server using `api.p
 
 This design ensures that the API server is robust, modular, and ready for production or integration with other services. The internal flow mirrors the modularity and extensibility of the DSPy RAG pipeline, making it easy to adapt or extend for new use cases.
 
-### 7. What Happens Internally (Example: `cli.py` execution)?
+### 8. What Happens Internally (Example: `cli.py` execution)?
 
 When you run `uv run python cli.py --query 'some query'`:
 
@@ -320,7 +284,7 @@ When you run `uv run python cli.py --query 'some query'`:
 
 *   **Streamlit App (`app.py`)**: Follows a similar flow but uses the separate ChromaDB path (`_st` suffix). It attempts to load existing data first. If new data is provided via the UI, it calls the same utility functions (`index_chroma_data`, `create_bm25_index`, `create_retrievers`, `create_rag_pipeline`) to process and index it before enabling search. Suppresses `httpx` and `LiteLLM` info logs.
 
-### 8. What Happens Internally (Example: `app.py` Streamlit execution)?
+### 9. What Happens Internally (Example: `app.py` Streamlit execution)?
 
 When you run `uv run streamlit run app.py`:
 
@@ -362,7 +326,6 @@ When you run `uv run streamlit run app.py`:
         3.  Reranking using the CrossEncoder.
         4.  Answer generation using the LLM.
     *   The answer is displayed in the Streamlit UI.
-
 
 ---
 ### 10. Customization
