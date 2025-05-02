@@ -15,6 +15,7 @@ dependencies = [
     "fastapi>=0.115.12",
     "uvicorn>=0.34.2",
     "litserve>=0.2.8",
+    "python-multipart>=0.0.20",
 ]
 
 [build-system]

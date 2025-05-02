@@ -1,18 +1,27 @@
-
-# Copyright The Lightning AI team.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 import requests
+import argparse
 
-response = requests.post("http://127.0.0.1:8001/predict", json={"question":"what is dspy ?"})
-print(f"Status: {response.status_code}\nResponse:\n {response.text}")
+parser = argparse.ArgumentParser(description="DSPy RAG Client: Ask a question or upload a file.")
+parser.add_argument("--question","-q", type=str, help="Question to ask the RAG API.")
+parser.add_argument("--file","-f", type=str, help="Path to file to upload.")
+parser.add_argument("--llm", action="store_true", help="Enable LLM answer generation. If not set, only reranked context is shown.")
+args = parser.parse_args()
+
+# Both question and file must be provided together
+if args.question and args.file:
+    with open(args.file, "rb") as f:
+        files = {"file": (args.file, f)}
+        response = requests.post("http://127.0.0.1:8001/upload_file/", files=files)
+    print(f"Status: {response.status_code}\nResponse:\n {response.text}")
+    payload = {"question": args.question}
+    if args.llm:
+        payload["use_llm"] = True
+    response = requests.post("http://127.0.0.1:8001/predict", json=payload)
+    print(f"Status: {response.status_code}\nResponse:\n {response.text}")
+else:
+    print("Both --question and --file must be provided together. Using default question.")
+    payload = {"question": "what is dspy ?"}
+    if args.llm:
+        payload["use_llm"] = True
+    response = requests.post("http://127.0.0.1:8001/predict", json=payload)
+    print(f"Status: {response.status_code}\nResponse:\n {response.text}")

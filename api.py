@@ -8,6 +8,11 @@ from dspy_rag_app.config import config
 from dspy_rag_app.nltk_utils import ensure_nltk_resources
 from dspy_rag_app.data import DOCUMENTS, DOCUMENT_IDS # Rename default import
 from dspy_rag_app.utils import load_components, create_retrievers, create_rag_pipeline
+import logging
+
+# --- Logging Configuration ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -117,6 +122,39 @@ class DSPyRAGAPI(ls.LitAPI):
              print(f"[{os.getpid()}] Error during response encoding: {e}")
              raise ls.LitAPIStatusError(500, f"Internal Server Error during encoding: {e}")
 
+    async def upload_file(self, file):
+        """
+        Accept a file upload (multipart/form-data), process its contents, and update the document index.
+        """
+        from fastapi import UploadFile
+        try:
+            # Read file contents
+            if isinstance(file, UploadFile):
+                file_content = await file.read()
+                filename = file.filename
+            else:
+                file_content = file.read()
+                filename = getattr(file, 'name', 'uploaded_file')
+            # Assume text file for now; adapt as needed for other formats
+            text = file_content.decode("utf-8")
+            # Here, split or parse text into documents as needed
+            # For demonstration, treat the whole file as one document
+            new_doc_id = f"uploaded_{filename}"
+            logger.info(f"Uploaded file: {filename}")
+            new_docs = [text]
+            new_doc_ids = [new_doc_id]
+            # Index the new document(s)
+            from dspy_rag_app.utils import index_chroma_data
+            index_chroma_data(self.client, self.embedder, new_docs, new_doc_ids, config.CHROMA_COLLECTION_NAME, clear_existing=False)
+            # Update BM25 index as well
+            self.bm25 = self.bm25 + new_docs
+            # Optionally, update retrievers if needed
+            self.chroma_retriever, self.bm25_retriever = create_retrievers(self.collection, self.embedder, self.bm25, DOCUMENTS + new_docs)
+            self.rag_pipeline = create_rag_pipeline(self.chroma_retriever, self.bm25_retriever, self.reranker, self.llm)
+            return {"status": "success", "message": f"File '{filename}' uploaded and indexed."}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
 
 # --- Main Execution: Run the LitServe Server ---
 if __name__ == "__main__":
@@ -127,8 +165,13 @@ if __name__ == "__main__":
     # Instantiate the LitAPI
     api = DSPyRAGAPI()
 
-    # Instantiate the LitServer
-    server = ls.LitServer(api, accelerator="auto", max_batch_size=1, timeout=60) # Increase timeout if predictions are long
-
-    # Run the server
+    # Run the LitServe server (remove FastAPI integration for now)
+    server = ls.LitServer(api, accelerator="auto", max_batch_size=1, timeout=60)
+    # --- Add custom upload_file endpoint to FastAPI app ---
+    from fastapi import UploadFile, File
+    from fastapi.responses import JSONResponse
+    @server.app.post("/upload_file")
+    async def upload_file_endpoint(file: UploadFile = File(...)):
+        result = await api.upload_file(file)
+        return JSONResponse(content=result)
     server.run(port=8001) # Choose a port
