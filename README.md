@@ -152,57 +152,82 @@ You have two main ways to run the application:
     uv run streamlit run app.py
     ```
 
-## API Server (LitServe, `api.py`)
+ *  **API Server (LitServe, `api.py`)**
 
-A FastAPI-compatible API server is provided via `api.py` using [LitServe](https://github.com/Lightning-AI/litserve). This allows you to serve the full DSPy RAG pipeline as a REST API for programmatic access or integration with other services.
+    A FastAPI-compatible API server is provided via `api.py` using [LitServe](https://github.com/Lightning-AI/litserve). This allows you to serve the full DSPy RAG pipeline as a REST API for programmatic access or integration with other services.
 
-### Running the API Server
+    ### Running the API Server
 
-Start the API server:
-```bash
-uv run python api.py
-```
+    Start the API server:
+    ```bash
+    uv run python api.py
+    ```
 
-By default, the server will listen on `localhost:8000` (configurable via LitServe options).
+    By default, the server will listen on `localhost:8000` (configurable via LitServe options).
 
-### Programmatic API Usage (Python Client)
+    ### Programmatic API Usage (Python Client)
 
-You can interact with the API server programmatically using Python. The provided `client.py` script demonstrates how to send a POST request to the `/predict` endpoint:
+    You can interact with the API server programmatically using Python. The provided `client.py` script demonstrates how to send a POST request to the `/predict` endpoint:
 
-```python
-uv run python client.py
-```
+    ```python
+    uv run python client.py
+    ```
 
-- Ensure the API server is running before executing the client script.
+    - Ensure the API server is running before executing the client script.
 
-### API Endpoint
+    ### API Endpoint
 
-- **POST** `/predict`
-    - **Request Body:** JSON with a `question` field (string)
-    - **Example:**
-      ```json
-      { "question": "What is DSPy?" }
-      ```
-    - **Response:** JSON with the generated answer and supporting context.
+    - **POST** `/predict`
+        - **Request Body:** JSON with a `question` field (string)
+        - **Example:**
+        ```json
+        { "question": "What is DSPy?" }
+        ```
+        - **Response:** JSON with the generated answer and supporting context.
 
-### Features
-- Loads all models, retrievers, and pipeline components on startup (see `setup` method in `api.py`).
-- Handles document indexing and BM25/ChromaDB setup automatically.
-- Returns detailed error messages for invalid requests or internal errors.
-- Uses the same configuration and document corpus as the CLI and Streamlit app.
+    ### Features
+    - Loads all models, retrievers, and pipeline components on startup (see `setup` method in `api.py`).
+    - Handles document indexing and BM25/ChromaDB setup automatically.
+    - Returns detailed error messages for invalid requests or internal errors.
+    - Uses the same configuration and document corpus as the CLI and Streamlit app.
 
-### Example cURL Request
-```bash
-curl -X POST http://localhost:8000/predict \
-     -H "Content-Type: application/json" \
-     -d '{"question": "What is DSPy?"}'
-```
+    ### Example cURL Request
+    ```bash
+    curl -X POST http://localhost:8000/predict \
+        -H "Content-Type: application/json" \
+        -d '{"question": "What is DSPy?"}'
+    ```
 
-### Environment Variables
-- Uses `CHROMA_DB_PATH_API` for ChromaDB storage (see `.env.example`).
-- Requires `OPENROUTER_API_KEY` for LLM generation.
+## What Happens Internally (Example: api.py litserve execution)?
 
-See `api.py` for full implementation details and customization options.
+This section explains the internal flow when running the API server using `api.py` with LitServe, providing a step-by-step overview of what happens under the hood:
+
+1. **Server Startup**
+   - The server is started by running `python api.py` (typically via `uv run python api.py`).
+   - Environment variables are loaded from `.env`.
+   - NLTK resources are ensured to be present for text processing.
+   - An instance of `DSPyRAGAPI` (a subclass of `ls.LitAPI`) is created.
+   - A `LitServer` is instantiated with this API and started on the specified port (default: 8001).
+
+2. **Component Initialization (`setup` method)**
+   - Runs once per worker process, triggered by LitServe.
+   - Loads all core components (embedder, reranker, ChromaDB client, LLM) using utility functions.
+   - Retrieves or creates the ChromaDB collection for document storage.
+   - Checks if the collection is empty or out-of-sync with the expected document IDs; if so, it (re)indexes all documents.
+   - Builds a BM25 index for fast keyword-based retrieval.
+   - Instantiates DSPy retrievers (Chroma and BM25) and the RAG pipeline, wiring together all components.
+
+3. **Request Handling**
+   - For each incoming API request, LitServe calls the following methods in order:
+     - **`decode_request`**: Parses the incoming JSON request, extracting the `question` field.
+     - **`predict`**: Runs the DSPy RAG pipeline with the provided question. This involves retrieving relevant documents, reranking, and generating an answer using the LLM.
+     - **`encode_response`**: Formats the prediction (answer) into a JSON response to be returned to the client.
+
+4. **Error Handling & Logging**
+   - Each stage includes logging for debugging and performance monitoring (e.g., setup time, prediction time, errors).
+   - Errors are caught and returned as structured API errors using LitServe's error handling mechanisms.
+
+This design ensures that the API server is robust, modular, and ready for production or integration with other services. The internal flow mirrors the modularity and extensibility of the DSPy RAG pipeline, making it easy to adapt or extend for new use cases.
 
 ### 7. What Happens Internally (Example: `main.py` execution)?
 
@@ -294,13 +319,14 @@ When you run `uv run streamlit run app.py`:
         4.  Answer generation using the LLM.
     *   The answer is displayed in the Streamlit UI.
 
+
 ---
-### 9. Customization
+### 10. Customization
 - Add your own default documents to the `DOCUMENTS` list in `src/dspy_rag_app/data.py`.
 - Change retrieval, rerank parameters, model names, or paths via the `.env` file.
 - Modify the core pipeline logic in `src/dspy_rag_app/rag_pipeline.py` or the utility functions in `src/dspy_rag_app/utils.py`.
 
-### 10. Troubleshooting
+### 11. Troubleshooting
 - Ensure your `.env` is set up and API keys are valid.
 - If you see NLTK errors, delete `.venv/nltk_data` and rerun.
 - For LLM errors, check your OpenRouter API key and model name.
