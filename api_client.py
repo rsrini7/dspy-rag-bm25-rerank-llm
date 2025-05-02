@@ -22,6 +22,7 @@ else:
     print("Both --question and --file must be provided together. Using default question.")
     payload = {"question": "what is dspy ?"}
     if args.llm:
+        payload = {"question": "Sumarize the file."}
         payload["use_llm"] = True
     response = requests.post("http://127.0.0.1:8001/predict", json=payload)
     print(f"Status: {response.status_code}\nResponse:\n {response.text}")

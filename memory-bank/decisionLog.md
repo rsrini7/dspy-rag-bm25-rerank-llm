@@ -23,5 +23,5 @@ Adopt a hybrid Retrieval-Augmented Generation (RAG) pipeline combining BM25 keyw
 - `ChromaRetriever` and `BM25Retriever` encapsulate vector and keyword search logic, respectively.
 - `utils.py` provides functions to load components, create retrievers, and instantiate the pipeline.
 - Configuration is loaded from `.env` using Pydantic (`config.py`).
-- Streamlit app (`app.py`) and CLI (`main.py`) use separate ChromaDB paths.
+- Streamlit app (`app.py`) and CLI (`cli.py`) use separate ChromaDB paths.
 - Demo data and modular utilities facilitate unit and integration testing.

@@ -12,7 +12,7 @@ This file tracks the project's progress using a task list format.
 *   Created the memory bank files: `productContext.md`, `activeContext.md`, `progress.md`, `decisionLog.md`, and `systemPatterns.md`.
 *   Read the `README.md` file.
 *   Read the `app.py` file.
-*   Read the `main.py` file.
+*   Read the `cli.py` file.
 *   Read the `config.py` file.
 *   Read the `rag_pipeline.py` file.
 *   Read the `retrievers.py` file.

@@ -15,7 +15,7 @@ This file tracks the project's current status, including recent changes, current
 
 *   Read the `README.md` file to get a high-level overview of the project.
 *   Read the `app.py` file to understand the Streamlit application.
-*   Read the `main.py` file to understand the command-line interface.
+*   Read the `cli.py` file to understand the command-line interface.
 *   Read the `config.py` file to understand the project's configuration.
 *   Read the `rag_pipeline.py` file to understand the RAG pipeline.
 *   Read the `retrievers.py` file to understand the custom retrievers.

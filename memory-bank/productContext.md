@@ -16,7 +16,7 @@ This file provides a high-level overview of the project and the expected product
 *   Neural Reranking (CrossEncoder)
 *   LLM Generation
 *   Streamlit Interface (`app.py`)
-*   Command-Line Interface (`main.py`)
+*   Command-Line Interface (`cli.py`)
 
 ## Overall Architecture
 

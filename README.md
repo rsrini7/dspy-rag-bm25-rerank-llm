@@ -2,7 +2,7 @@
 ---
 ## Project Overview
 
-This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built with DSPy and inference pipeine using LitServe. It combines keyword search (BM25) and dense vector search (ChromaDB with Sentence Transformers) followed by a reranking step (Cross-Encoder) to retrieve relevant context for a Language Model (LLM) to generate an answer. The project includes both a command-line interface (`main.py`) with improved argument handling and an interactive Streamlit web application (`app.py`). ChromaDB telemetry is disabled, and separate database paths are used for the CLI and Streamlit app to prevent conflicts.
+This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built with DSPy and inference pipeine using LitServe. It combines keyword search (BM25) and dense vector search (ChromaDB with Sentence Transformers) followed by a reranking step (Cross-Encoder) to retrieve relevant context for a Language Model (LLM) to generate an answer. The project includes both a command-line interface (`cli.py`) with improved argument handling and an interactive Streamlit web application (`app.py`). ChromaDB telemetry is disabled, and separate database paths are used for the CLI and Streamlit app to prevent conflicts.
 
 ---
 ## Architecture Diagram
@@ -33,7 +33,7 @@ This project demonstrates a Retrieval-Augmented Generation (RAG) pipeline built 
 *   **Neural Reranking**: Uses a CrossEncoder model to rerank the fused results for relevance.
 *   **LLM Generation**: Generates answers using a large language model, conditioned on the top reranked context.
 *   **Streamlit Interface**: Provides a web UI for interacting with the RAG pipeline.
-*   **Command-Line Interface**: Offers a CLI (`main.py`) for indexing and querying, with clear argument requirements.
+*   **Command-Line Interface**: Offers a CLI (`cli.py`) for indexing and querying, with clear argument requirements.
 *   **Separate DB Paths**: Uses distinct ChromaDB directories for CLI (`./chroma_db_dspy`) and Streamlit (`./chroma_db_dspy_st`) modes.
 *   **ChromaDB Telemetry Disabled**: Configured to prevent sending anonymized usage data.
 *   **Logging Control**: Suppresses verbose `INFO` logs from underlying libraries like `httpx` and `LiteLLM`.
@@ -52,18 +52,18 @@ When you run the Streamlit app, you'll see a checkbox labeled **"Enable LLM Gene
 
 This allows you to control LLM usage interactively during your session.
 
-### Command-Line Interface (`main.py`)
+### Command-Line Interface (`cli.py`)
 
 The CLI provides a `--llm` flag to control LLM generation:
 
 - **With `--llm`:**
   ```bash
-  uv run python main.py --query "What is DSPy?" --llm
+  uv run python cli.py --query "What is DSPy?" --llm
   ```
   The pipeline will generate and print the LLM answer.
 - **Without `--llm`:**
   ```bash
-  uv run python main.py --query "What is DSPy?"
+  uv run python cli.py --query "What is DSPy?"
   ```
   Only the reranked context (top documents) will be printed, with no LLM answer.
 
@@ -108,7 +108,7 @@ LLM_MODEL=openai/gpt-3.5-turbo
 K_EMBEDDING_RETRIEVAL=10
 K_BM25_RETRIEVAL=10
 K_RERANK=3
-CHROMA_DB_PATH=./chroma_db_dspy         # Path for main.py
+CHROMA_DB_PATH=./chroma_db_dspy         # Path for cli.py
 CHROMA_DB_PATH_ST=./chroma_db_dspy_st   # Path for app.py (Streamlit)
 CHROMA_COLLECTION_NAME=hybrid_rag_docs
 ```
@@ -120,13 +120,13 @@ All configuration variables (model names, retrieval parameters, ChromaDB paths, 
 - If you add new config variables, update both `.env` and the `Config` class in `config.py`.
 
 ### 5. Download NLTK Data (if needed)
-The scripts (`main.py` and `app.py`) will automatically attempt to download 'punkt' and 'stopwords' via the `ensure_nltk_resources` function if they are not found in the standard NLTK data path.
+The scripts (`cli.py` and `app.py`) will automatically attempt to download 'punkt' and 'stopwords' via the `ensure_nltk_resources` function if they are not found in the standard NLTK data path.
 
 ### 6. Run the Application
 
 You have two main ways to run the application:
 
-*   **Command-Line Interface (main.py):**
+*   **Command-Line Interface (cli.py):**
     This script requires a query (`--query`) to run. Optionally, you can provide a file (`--file`) containing documents (one per line) to index its content. **If `--file` is not provided, the script uses a default set of documents defined in `src/dspy_rag_app/data.py`.** If you provide a file, a query is mandatory. Use `uv run` to execute it within the managed environment:
 
     **Arguments:**
@@ -137,13 +137,13 @@ You have two main ways to run the application:
     **Examples:**
     ```bash
     # Use default documents and run a specific query (reranked context only)
-    uv run python main.py --query 'What is DSPy?'
+    uv run python cli.py --query 'What is DSPy?'
 
     # Use default documents and get an LLM answer
-    uv run python main.py --query 'What is DSPy?' --llm
+    uv run python cli.py --query 'What is DSPy?' --llm
 
     # Index 'my_docs.txt' and run a specific query (LLM answer)
-    uv run python main.py --file path/to/my_docs.txt --query 'Summarize the file.' --llm
+    uv run python cli.py --file path/to/my_docs.txt --query 'Summarize the file.' --llm
     ```
 
 *   **Streamlit Web Interface (app.py):**
@@ -167,10 +167,10 @@ You have two main ways to run the application:
 
     ### Programmatic API Usage (Python Client)
 
-    You can interact with the API server programmatically using Python. The provided `client.py` script demonstrates how to send a POST request to the `/predict` endpoint:
+    You can interact with the API server programmatically using Python. The provided `api_client.py` script demonstrates how to send a POST request to the `/predict` endpoint:
 
     ```python
-    uv run python client.py
+    uv run python api_client.py
     ```
 
     - Ensure the API server is running before executing the client script.
@@ -229,9 +229,9 @@ This section explains the internal flow when running the API server using `api.p
 
 This design ensures that the API server is robust, modular, and ready for production or integration with other services. The internal flow mirrors the modularity and extensibility of the DSPy RAG pipeline, making it easy to adapt or extend for new use cases.
 
-### 7. What Happens Internally (Example: `main.py` execution)?
+### 7. What Happens Internally (Example: `cli.py` execution)?
 
-When you run `uv run python main.py --query 'some query'`:
+When you run `uv run python cli.py --query 'some query'`:
 
 *   **Load Components (`utils.load_components`)**:
     *   Loads configuration from `.env` via <mcfile name="config.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/config.py"></mcfile>.
@@ -239,7 +239,7 @@ When you run `uv run python main.py --query 'some query'`:
     *   Initializes the ChromaDB client (`chromadb.PersistentClient`) using the CLI path (`CHROMA_DB_PATH`) and **disables telemetry**.
     *   Configures DSPy settings globally with the loaded LLM.
     *   Suppresses `INFO` level logs from `httpx` and `LiteLLM`.
-*   **Parse Arguments (`main.py`)**:
+*   **Parse Arguments (`cli.py`)**:
     *   Processes command-line arguments (`--file`, `--query`).
     *   Determines the document source: uses the file specified by `--file` or defaults to documents in <mcfile name="data.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/data.py"></mcfile> if `--file` is omitted.
     *   Ensures a query is provided.
@@ -264,7 +264,7 @@ When you run `uv run python main.py --query 'some query'`:
         *   The reranking model (`CrossEncoder`).
         *   The LLM (`dspy.LM`).
     *   It's configured with the `rerank_k` value from `config.py`.
-*   **Run Query (`main.py`)**:
+*   **Run Query (`cli.py`)**:
     *   Calls the forward method of the <mcsymbol name="RAGHybridFusedRerank" filename="rag_pipeline.py" path="/Users/srini/Ws/dspy-rag-bm25-rerank-llm/src/dspy_rag_app/rag_pipeline.py" startline="10" type="class"></mcsymbol> instance with the user's query (`args.query`).
     *   Internally, the pipeline performs:
         1.  Retrieval using both vector and keyword retrievers.
@@ -347,7 +347,7 @@ When you run `uv run streamlit run app.py`:
 │   ├── .keep               # Placeholder file
 │   ├── architecture.png
 │   └── architecture-flow.png
-├── main.py                 # Command-line script entry point (uses utils.py)
+├── cli.py                 # Command-line script entry point (uses utils.py)
 ├── pyproject.toml          # Project metadata and dependencies (used by uv/setuptools)
 ├── README.md               # This guide
 ├── src/                    # Main source code directory
@@ -355,12 +355,12 @@ When you run `uv run streamlit run app.py`:
 │       ├── __init__.py     # Makes dspy_rag_app a Python package
 │       ├── bm25_utils.py   # Utilities for BM25 indexing (preprocessing, NLTK)
 │       ├── config.py       # Loads configuration settings (models, paths, keys) from .env
-│       ├── data.py         # Defines or loads the default document corpus for main.py
+│       ├── data.py         # Defines or loads the default document corpus for cli.py
 │       ├── rag_pipeline.py # Defines the main RAG DSPy module/pipeline (RAGHybridFusedRerank)
 │       ├── retrievers.py   # Custom DSPy retriever modules (ChromaRetriever, BM25Retriever)
-│       └── utils.py        # Shared utility functions (load components, index data, create retrievers/pipeline) used by main.py and app.py
+│       └── utils.py        # Shared utility functions (load components, index data, create retrievers/pipeline) used by cli.py and app.py
 ├── uv.lock                 # uv lock file for reproducible dependencies
-└── chroma_db_dspy/         # Default ChromaDB storage location (for main.py, ignored by git)
+└── chroma_db_dspy/         # Default ChromaDB storage location (for cli.py, ignored by git)
 └── chroma_db_dspy_st/      # Default ChromaDB storage location (for app.py, ignored by git)
 ```
 

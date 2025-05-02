@@ -61,9 +61,9 @@ if __name__ == "__main__":
         print("  --llm                  : Enable LLM generation. If not set, only reranked context will be returned.")
         print("\nExamples:")
         print("  # Use default documents and run a specific query:")
-        print("  uv run python main.py --query 'What is DSPy?'")
+        print("  uv run python cli.py --query 'What is DSPy?'")
         print("\n  # Index 'my_docs.txt' and run a specific query:")
-        print("  uv run python main.py --file path/to/my_docs.txt --query 'Summarize the file.'")
+        print("  uv run python cli.py --file path/to/my_docs.txt --query 'Summarize the file.'")
         print("\nNote: Running without arguments shows this help message.")
         exit(1) # Exit if no arguments are given
 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     elif args.file and not args.query:
         print("\nUsage Error: When providing a --file, you must also provide a --query.")
         print("\nExample:")
-        print("  uv run python main.py --file path/to/my_docs.txt --query 'Summarize the file.'")
+        print("  uv run python cli.py --file path/to/my_docs.txt --query 'Summarize the file.'")
         exit(1) # Exit because --query is mandatory with --file
 
     # --- Proceed only if arguments are valid (either --query alone, or --file and --query together) ---
